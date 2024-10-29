@@ -8,8 +8,8 @@ const router = express.Router();
 const s3Client = new S3Client({
     region: "eu-north-1",
     credentials: {
-        accessKeyId: "AKIAYS2NSPXESMKUJGEH",
-        secretAccessKey: "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"
+        accessKeyId: process.env.ACCESS_KEY_ID,
+        secretAccessKey: process.env.SECRET_ACCESS_KEY
     }
 });
 console.log("this is s3 client", s3Client.config);
