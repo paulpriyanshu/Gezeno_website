@@ -13,15 +13,28 @@ const productSchema = new mongoose.Schema({
         maxLength: [5, "Product price cannot exceed 5 characters"],
         default: 0.0,
     },
+    shortDetails:{
+        type:String,
+        required:[true,"Please enter product short detail"]
+    },
     description: {
         type: String,
         required: [true, "Please enter product description"],
+    },
+    productSpecs: {
+        type: String,
+        required: [false, "Please enter product specification"],
     },
     ratings: {
         type: Number,
         default: 0,
     },
-    images: [{ type: String }],
+    images: [
+        {
+          url: { type: String, required: true },
+          filename: { type: String, required: true }
+        }
+      ],
 
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory', required: false },
@@ -33,7 +46,7 @@ const productSchema = new mongoose.Schema({
         required: [false, "Please enter product seller"],
     },
     stock: {
-        type: Number,
+        type:Number,
         required: [true, "Please enter product stock"],
         maxLength: [5, "Product stock cannot exceed 5 characters"],
         default: 0,
@@ -110,14 +123,24 @@ const subSubCategorySchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });
-
 const productVariantSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    variantType: { type: String, required: true },
-    variantName: { type: Array, required: true },
+    color: { type: String, required: false },
+    variantName: { type: String, required: true },
     commingSoon: { type: Boolean, default: false },
     variantPrice: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
+    sizes: {
+        type: [String],
+        enum: ['XS','S', 'M', 'L', 'XL', 'XXL', 'XXXL', '26', '28', '30'],
+        default: []
+    },
+    images: [
+        {
+          url: { type: String, required: false },
+          filename: { type: String, required: false }
+        }
+      ],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
@@ -136,4 +159,4 @@ module.exports = {
     SubSubCategory,
     Product,
     ProductVariant,
-}
+} 

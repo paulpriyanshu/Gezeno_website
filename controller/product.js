@@ -364,8 +364,8 @@ router.delete('/deletesubsubcategory/:name', async (req, res) => {
 //craete product variant
 router.post('/create-product-variant',async(req,res)=>{
     try{
-        const {productId, variantType, variantName, variantPrice} = req.body
-    if (!productId || !variantType || !variantName || !variantPrice) {
+        const {productId, variantName, variantPrice, sizes,images} = req.body
+    if (!productId || !variantName || !variantPrice) {
         return res.status(400).json({ message: 'productId, variant type, variant name, and variant price are required' });
 
     }
@@ -375,9 +375,10 @@ router.post('/create-product-variant',async(req,res)=>{
     }
     const newVariant = new ProductVariant({
         productId,
-        variantType,
         variantName,
-        variantPrice
+        variantPrice,
+        sizes,
+        images: images || []
     });
     const savedVariant = await newVariant.save();
    
@@ -422,10 +423,10 @@ router.post('/getproducts-by-variant', async (req, res) => {
 // Create product
 router.post('/createproduct', async (req, res) => {
     try {
-        const { name, price, description, images, category, subCategory, subSubCategory, brand, seller, stock, reviews } = req.body;
+        const { name, price,shortDetails, description,productSpecs, images, category, subCategory, subSubCategory, brand, seller, stock, reviews } = req.body;
 
         // Validate required fields
-        if (!name || !price || !description || !brand) {
+        if (!name || !price || !description || !brand || !shortDetails) {
             return res.status(400).json({ message: 'Name, price, description, and brand are required' });
         }
 
@@ -487,7 +488,9 @@ router.post('/createproduct', async (req, res) => {
         const newProduct = new Product({
             name,
             price,
+            shortDetails,
             description,
+            productSpecs,
             images: images || [], // Default to an empty array if images are not provided
             category: categoryDoc ? categoryDoc._id : undefined,
             subCategory: subCategoryDoc ? subCategoryDoc._id : undefined,
@@ -507,9 +510,34 @@ router.post('/createproduct', async (req, res) => {
     }
 });
 //get allproduct
+router.post('/deleteproduct',async(req,res)=>{
+    try {
+        const data=await Product.deleteMany()
+        res.send("deleted data")
+    } catch (error) { 
+        console.log(error)
+        res.send(error)
+    } 
+})
 router.get('/getproducts',async(req,res)=>{
     try{
-      const data = await Product.find().populate({path:'category',populate:{path:'subCategories',populate:{path:'subSubCategories'}}}).populate('brand')
+        const data = await Product.find()
+        .populate({
+          path: 'category',
+          populate: {
+            path: 'subCategories',
+            populate: {
+              path: 'subSubCategories'
+            }
+          }
+        })
+        .populate('subCategory')  // Direct population for subCategory reference in Product schema
+        .populate('subSubCategory') // Direct population for subSubCategory reference in Product schema
+        .populate('brand')  // Populates brand details
+        .populate({
+          path: 'variants', // Populates variants and includes the necessary fields for each variant
+          model: 'ProductVariant'
+        });
    res.send(data)   
     }catch(error){
         res.send(error)

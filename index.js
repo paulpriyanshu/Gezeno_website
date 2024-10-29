@@ -6,7 +6,10 @@ const search = require('./controller/search')
 const limiter = require('./middleware/ratelimit')
 const connectdb = require('./libs/dbconnection');
 const passport = require('passport');
+const image=require('./controller/bucket')
 const cors=require('cors')
+
+
 // const swaggerUi = require('swagger-ui-express');
 // const swaggerJSDoc = require('swagger-jsdoc');
 // const swaggerSpec = require('./config/swaggerconf');
@@ -19,6 +22,7 @@ app.use(cors())
 require('./libs/passport');
 app.use(passport.initialize());
 
+
 app.use(express.json());
 app.use(limiter);
 
@@ -28,6 +32,7 @@ app.use('/api/', authRoutes);
 app.use('/api/', product);
 app.use('/api/',cart)
 app.use('/api',search)
+app.use('/api/',image)
 
 app.get('/getdata',(req,res)=>{
     res.json({msg:"hello"})
