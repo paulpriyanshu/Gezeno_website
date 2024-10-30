@@ -15,13 +15,18 @@ require('dotenv').config()
 // const swaggerUi = require('swagger-ui-express');
 // const swaggerJSDoc = require('swagger-jsdoc');
 // const swaggerSpec = require('./config/swaggerconf');
+const corsOptions = {
+    origin: '*', // Change this to your frontend's URL in production
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, // Allow cookies or authorization headers
+};
 const app = express()
 
 const port = 8080
 
 
 connectdb()
-app.use(cors())
+app.use(cors(corsOptions))
 require('./libs/passport');
 app.use(passport.initialize());
 
