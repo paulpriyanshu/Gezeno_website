@@ -8,6 +8,8 @@ const connectdb = require('./libs/dbconnection');
 const passport = require('passport');
 const image=require('./controller/bucket')
 const cors=require('cors')
+require('dotenv').config()
+
 
 
 // const swaggerUi = require('swagger-ui-express');
@@ -16,6 +18,7 @@ const cors=require('cors')
 const app = express()
 
 const port = 8080
+
 
 connectdb()
 app.use(cors())
@@ -34,6 +37,7 @@ app.use('/api/',cart)
 app.use('/api',search)
 app.use('/api/',image)
 
+console.log(process.env.EMAIL_USERNAME)
 app.get('/getdata',(req,res)=>{
     res.json({msg:"hello"})
 })
