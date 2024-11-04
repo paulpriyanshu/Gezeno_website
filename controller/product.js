@@ -163,11 +163,22 @@ try {
 // })
 
 router.get('/categories', async (req, res) => {
-    try {
+  try {
         // Fetch all categories with their associated subcategories
         const categories = await Category.find().populate('subCategories');
 
-        res.status(200).json({ success: true, categories });
+        // Attach products to each category based on matching `category` field
+        const categoriesWithProducts = await Promise.all(categories.map(async (category) => {
+            const products = await Product.find({ category: category._id })
+                .populate('brand')          // Optionally populate brand
+                .populate('variants');      // Optionally populate variants
+            return {
+                ...category.toObject(),
+                products,  // Attach the matched products to the category
+            };
+        }));
+
+        res.status(200).json({ success: true, categories: categoriesWithProducts });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -423,7 +434,7 @@ router.post('/getproducts-by-variant', async (req, res) => {
 // Create product
 router.post('/createproduct', async (req, res) => {
     try {
-        const { name, price,shortDetails, description,productSpecs, images, category, subCategory, subSubCategory, brand, seller, stock, reviews } = req.body;
+        const { name, price,shortDetails, description,productSpecs, images, category, subCategory, subSubCategory, brand, seller, stock, reviews, metatitle,metadescription,metakeyword,metascript } = req.body;
 
         // Validate required fields
         if (!name || !price || !description || !brand || !shortDetails) {
@@ -498,7 +509,11 @@ router.post('/createproduct', async (req, res) => {
             brand: brandDoc._id,
             seller: seller || '', // Default to an empty string if the seller is not provided
             stock: stock !== undefined ? stock : 0, // Default stock to 0 if not provided
-            reviews: processedReviews
+            reviews: processedReviews,
+            metadescription,
+            metascript,
+            metakeyword,
+            metatitle
         });
 
         const savedProduct = await newProduct.save();
@@ -652,101 +667,56 @@ router.get('/products/:id', async (req, res) => {
 });
 
 
-router.post('/updateproduct/:id', async (req, res) => {
+router.post('/update-product/:productId', async (req, res) => {
+    const { productId } = req.params;
+    const updateData = req.body;
+
     try {
-        const { id } = req.params;
-        const {
-            name,
-            price,
-            description,
-            images,
-            category,
-            subCategory,
-            subSubCategory,
-            brand,
-            seller,
-            stock,
-        } = req.body;
-
-        // Build the update object dynamically
-        const updateData = {};
-
-        if (name) updateData.name = name;
-        if (price) updateData.price = price;
-        if (description) updateData.description = description;
-        if (images) updateData.images = images;
-        if (seller) updateData.seller = seller;
-        if (stock) updateData.stock = stock;
-
-        // Handle the brand update or creation only if brand is provided
-        if (brand) {
-            const brandRecord = await Brand.findOne({ name: brand });
-            if (!brandRecord) {
-                const newBrand = new Brand({ name: brand });
-                await newBrand.save();
-                updateData.brand = newBrand._id;
-            } else {
-                updateData.brand = brandRecord._id;
-            }
+        // Convert brand name to ObjectId if provided
+        if (updateData.brand) {
+            const brandDoc = await Brand.findOne({ name: updateData.brand });
+            if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
+            updateData.brand = brandDoc._id;
         }
 
-        // Handle the subSubCategory update or creation only if subSubCategory is provided
-        if (subSubCategory) {
-            const subSubCategoryRecord = await SubSubCategory.findOne({ name: subSubCategory });
-            if (!subSubCategoryRecord) {
-                const newSubSubCategory = new SubSubCategory({ name: subSubCategory });
-                await newSubSubCategory.save();
-                updateData.subSubCategory = newSubSubCategory._id;
-            } else {
-                updateData.subSubCategory = subSubCategoryRecord._id;
-            }
+        // Convert category name to ObjectId if provided
+        if (updateData.category) {
+            const categoryDoc = await Category.findOne({ name: updateData.category });
+            if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
+            updateData.category = categoryDoc._id;
         }
 
-        // Handle the subCategory update or creation only if subCategory is provided
-        if (subCategory) {
-            const subCategoryRecord = await SubCategory.findOne({ name: subCategory });
-            if (!subCategoryRecord) {
-                const newSubCategory = new SubCategory({ name: subCategory, subSubCategories: [updateData.subSubCategory] });
-                await newSubCategory.save();
-                updateData.subCategory = newSubCategory._id;
-            } else {
-                updateData.subCategory = subCategoryRecord._id;
-                if (updateData.subSubCategory && !subCategoryRecord.subSubCategories.includes(updateData.subSubCategory)) {
-                    subCategoryRecord.subSubCategories.push(updateData.subSubCategory);
-                    await subCategoryRecord.save();
-                }
-            }
+        // Convert subCategory name to ObjectId if provided
+        if (updateData.subCategory) {
+            const subCategoryDoc = await SubCategory.findOne({ name: updateData.subCategory });
+            if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
+            updateData.subCategory = subCategoryDoc._id;
         }
 
-        // Handle the category update or creation only if category is provided
-        if (category) {
-            const categoryRecord = await Category.findOne({ name: category });
-            if (!categoryRecord) {
-                const newCategory = new Category({ name: category, subCategories: [updateData.subCategory] });
-                await newCategory.save();
-                updateData.category = newCategory._id;
-            } else {
-                updateData.category = categoryRecord._id;
-                if (updateData.subCategory && !categoryRecord.subCategories.includes(updateData.subCategory)) {
-                    categoryRecord.subCategories.push(updateData.subCategory);
-                    await categoryRecord.save();
-                }
-            }
+        // Convert subSubCategory name to ObjectId if provided
+        if (updateData.subSubCategory) {
+            const subSubCategoryDoc = await SubSubCategory.findOne({ name: updateData.subSubCategory });
+            if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
+            updateData.subSubCategory = subSubCategoryDoc._id;
         }
 
-        // Update the product using the dynamically built updateData object
-        const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        // Exclude updatedAt field from updateData if it exists
+        delete updateData.updatedAt;
 
-        if (!updatedProduct) {
-            return res.status(404).json({ message: 'Product not found' });
-        }
+        // Update the product
+        const product = await Product.findByIdAndUpdate(productId, updateData, { new: true, runValidators: true })
+            .populate('brand', 'name') // Only select the 'name' field of the brand
+            .populate('category', 'name'); // Only select the 'name' field of the category
 
-        return res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
+        if (!product) return res.status(404).json({ message: "Product not found" });
+
+        res.status(200).json({ message: "Product updated successfully", product });
     } catch (error) {
-        console.error('Error updating product:', error);
-        return res.status(500).json({ message: 'Server error' });
+        console.error("Error updating product:", error.message);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 });
+
 //delete product
 router.post('/deleteproduct/:id', async (req, res) => {
     try {

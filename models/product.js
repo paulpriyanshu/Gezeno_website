@@ -29,6 +29,22 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    metatitle:{
+        type: String,
+        required:[false]
+    },
+    metakeyword:{
+        type: String,
+        required:[false]
+    },
+     metadescription:{
+        type: String,
+        required:[false]
+    },
+     metascript:{
+        type: String,
+        required:[false]
+    },
     images: [
         {
           url: { type: String, required: true },
@@ -102,6 +118,14 @@ const brandSchema = new mongoose.Schema({
 // Category Schema
 const categorySchema = new mongoose.Schema({
     name: { type: String, required: true },
+    images:[
+        {
+            url:{ type:String , required:false},
+            filename:{type:String , required:false}
+    }
+    ], 
+    isNewLaunch:{ type: Boolean, default:false},
+
     isActive: { type: Boolean, default: true },
     commingSoon: { type: Boolean, default: false },
     subCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' }],
