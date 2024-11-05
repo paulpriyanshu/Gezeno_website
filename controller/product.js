@@ -186,25 +186,64 @@ router.get('/categories', async (req, res) => {
 });
 router.post('/createcategory', async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, images, isNewLaunch, isActive, comingSoon, subCategories } = req.body;
 
+        // Check if 'name' is provided
         if (!name) {
             return res.status(400).json({ success: false, message: 'Name is required' });
         }
 
-        // Check if a category with the same name exists
+        // Check if a category with the same name already exists
         const existingCategory = await Category.findOne({ name });
         if (existingCategory) {
             return res.status(400).json({ success: false, message: 'Category with this name already exists' });
         }
 
-        const category = new Category({ name });
+        // Create a new category with all fields
+        const category = new Category({
+            name,
+            images,             // Array of image objects { url, filename }
+            isNewLaunch,        // Boolean value, defaults to false if not provided
+            isActive,           // Boolean value, defaults to true if not provided
+            comingSoon,         // Boolean value, defaults to false if not provided
+            subCategories       // Array of ObjectId references to SubCategory
+        });
+
+        // Save the new category
         await category.save();
 
         res.status(201).json({ success: true, category });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+router.post('/editcategory', async (req, res) => {
+    const { name, ...updateFields } = req.body; // Extract name and other fields
+
+    // Check if 'name' is provided to identify the category to update
+    if (!name) {
+        return res.status(400).json({ success: false, message: 'Name is required to find the category' });
+    }
+
+    try {
+        // Find the category by name and update with fields provided in the request body
+        const updatedCategory = await Category.findOneAndUpdate(
+            { name },                 // Filter by name
+            { $set: updateFields },    // Update fields dynamically
+            { new: true, upsert: false } // Return the updated document if found, don't create a new one
+        );
+
+        // If no category is found, send an error response
+        if (!updatedCategory) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Send the updated category as a response
+        return res.status(200).json({ success: true, message: 'Category updated', data: updatedCategory });
+    } catch (error) {
+        console.error('Error updating category:', error);
+        return res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 router.post('/deletecategory/:name', async (req, res) => {
