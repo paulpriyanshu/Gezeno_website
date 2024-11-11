@@ -6,6 +6,7 @@ const search = require('./controller/search')
 const limiter = require('./middleware/ratelimit')
 const connectdb = require('./libs/dbconnection');
 const passport = require('passport');
+const homepage=require('./controller/home')
 const image=require('./controller/bucket')
 const cors=require('cors')
 require('dotenv').config()
@@ -32,10 +33,10 @@ app.use(passport.initialize());
 
 
 app.use(express.json());
-app.use(limiter);
+// app.use(limiter);
 
 // app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use('/api/',homepage);
 app.use('/api/', authRoutes);
 app.use('/api/', product);
 app.use('/api/',cart)

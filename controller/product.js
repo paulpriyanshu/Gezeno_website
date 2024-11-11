@@ -1,11 +1,12 @@
 const express = require('express')
 const users = require('../models/users')
 const {  Brand,
-    Category,
+    ParentCategory,
     SubCategory,
     SubSubCategory,
+    SubSubSubCategory,
     Product,
-    ProductVariant,} = require('../models/product')
+    ProductVariant,Carousel,CustomSection} = require('../models/product')
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -106,62 +107,6 @@ try {
     }
 });
 
-// router.get('/brands/:name', async (req, res) => {
-//     try {
-//         const brand = await Brand.findById(req.params.name);
-//         if (!brand) {
-//             return res.status(404).json({ success: false, message: 'Brand not found' });
-//         }
-//         res.status(200).json({ success: true, data: brand });
-//     } catch (error) {
-//         res.status(400).json({ success: false, message: error.message });
-//     }
-// });
-
-// router.put('/updatebrands/:name', async (req, res) => {
-//     try {
-//         const { name, isActive } = req.body;
-//         const brand = await Brand.findByIdAndUpdate(
-//             req.params.name,
-//             { name, isActive, updatedAt: Date.now() },
-//             { new: true, runValidators: true }
-//         );
-//         if (!brand) {
-//             return res.status(404).json({ success: false, message: 'Brand not found' });
-//         }
-//         res.status(200).json({ success: true, data: brand });
-//     } catch (error) {
-//         res.status(400).json({ success: false, message: error.message });
-//     }
-// });
-
-// router.delete('/deletebrands/:name', async (req, res) => {
-//     try {
-//         const brand = await Brand.findByIdAndDelete(req.params.name);
-//         if (!brand) {
-//             return res.status(404).json({ success: false, message: 'Brand not found' });
-//         }
-//         res.status(200).json({ success: true, message: 'Brand deleted successfully' });
-//     } catch (error) {
-//         res.status(400).json({ success: false, message: error.message });
-//     }
-// });
-
-// router.post('/getwomencategory/:category',async(req,res)=>{
-//     try {
-//         const data = await Product.find().populate({
-//             path:'category',
-//             match:{name:req.params.category}
-//         });
-//         if (!data) {
-//             return res.status(404).json({ success: false, message: 'data not found' });
-//         }
-//         res.status(200).json({ success: true, data: data });
-//     } catch (error) {
-//         res.status(400).json({ success: false, message: error.message });
-//     }
-// })
-
 router.get('/categories', async (req, res) => {
   try {
         // Fetch all categories with their associated subcategories
@@ -184,97 +129,438 @@ router.get('/categories', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.post('/createcategory', async (req, res) => {
+router.post('/createProduct', async (req, res) => {
     try {
-        const { name, images, isNewLaunch, isActive, comingSoon, subCategories } = req.body;
-
-        // Check if 'name' is provided
-        if (!name) {
-            return res.status(400).json({ success: false, message: 'Name is required' });
+      const {
+        name,
+        description,
+        shortDetails,
+        productSpecs,
+        ratings,
+        metatitle,
+        metakeyword,
+        metadescription,
+        metascript,
+        price,
+        discountedPrice,
+        category,
+        subCategory,
+        subSubCategory,
+        subSubSubCategory,
+        subSubSubSubCategory,
+        brand,
+        variants,
+        images,
+        rating,
+        numOfReviews,
+        reviews,
+        stock,
+        isActive
+      } = req.body;
+  
+      // Validate required fields
+      if (!name || !price || !description) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide name, price and description"
+        });
+      }
+  
+      // Helper function to safely convert to ObjectId array
+      const toObjectIdArray = (value) => {
+        if (Array.isArray(value)) {
+          return value.map(id => new mongoose.Types.ObjectId(id));
+        } else if (value) {
+          return [new mongoose.Types.ObjectId(value)];
         }
-
-        // Check if a category with the same name already exists
-        const existingCategory = await Category.findOne({ name });
-        if (existingCategory) {
-            return res.status(400).json({ success: false, message: 'Category with this name already exists' });
-        }
-
-        // Create a new category with all fields
-        const category = new Category({
+        return [];
+      };
+  
+      // Create product object with validated data
+      const productData = {
+        name,
+        description,
+        price,
+        stock: stock || 0,
+        isActive: isActive ?? true, // Use nullish coalescing to default to true
+        
+        // Optional fields with defaults
+        shortDetails: shortDetails || '',
+        productSpecs: productSpecs || '',
+        ratings: ratings || 0,
+        metatitle: metatitle || '',
+        metakeyword: metakeyword || '',
+        metadescription: metadescription || '',
+        metascript: metascript || '',
+        discountedPrice: discountedPrice || null,
+        rating: rating || 0,
+        numOfReviews: numOfReviews || 0,
+  
+        // Convert ObjectId fields if they exist
+        category: category ? new mongoose.Types.ObjectId(category) : null,
+        brand: brand ? new mongoose.Types.ObjectId(brand) : null,
+  
+        // Handle array of ObjectIds
+        subCategory: toObjectIdArray(subCategory),
+        subSubCategory: toObjectIdArray(subSubCategory),
+        subSubSubCategory: toObjectIdArray(subSubSubCategory),
+        subSubSubSubCategory: toObjectIdArray(subSubSubSubCategory),
+        variants: toObjectIdArray(variants),
+  
+        // Handle images array
+        images: images || [],
+  
+        // Handle reviews array with proper ObjectId conversion
+        reviews: Array.isArray(reviews) ? reviews.map(review => ({
+          user: new mongoose.Types.ObjectId(review.user),
+          name: review.name,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt || Date.now()
+        })) : []
+      };
+  
+      // Create the product
+      const product = await Product.create(productData);
+  
+      // If product is successfully created
+      res.status(201).json({
+        success: true,
+        message: "Product created successfully",
+        product
+      });
+  
+    } catch (error) {
+      console.error('Error in createProduct:', error);
+      
+      // Handle specific MongoDB errors
+      if (error.name === 'ValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: "Validation Error",
+          errors: Object.keys(error.errors).map(key => ({
+            field: key,
+            message: error.errors[key].message
+          }))
+        });
+      }
+  
+      // Handle general errors
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message
+      });
+    }
+  });
+router.get('/getProducts',async(req,res)=>{
+    try {
+        const products = await Product.find().populate(['category', 'subCategory', 'subSubCategory', 'brand','variants']);
+        res.status(200).json(products);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+})
+router.post('/createCategory',async(req,res)=>{
+    try {
+        const { name,description, image, parentCategory } = req.body;
+        const category = await ParentCategory.create({
             name,
-            images,             // Array of image objects { url, filename }
-            isNewLaunch,        // Boolean value, defaults to false if not provided
-            isActive,           // Boolean value, defaults to true if not provided
-            comingSoon,         // Boolean value, defaults to false if not provided
-            subCategories       // Array of ObjectId references to SubCategory
+            description,
+            image,
+            parentCategory
+        });
+        res.status(201).json(category);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+
+})
+router.get('/getCategories', async (req, res) => {
+    try {
+      const categories = await ParentCategory.find()
+        .populate({
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate: {
+              path: 'subSubSubCategories',
+              populate: {
+                path: 'subSubSubSubCategories',
+              }
+            }
+          }
+        })
+        .exec();
+  
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  router.get('/getOnlyCategories', async (req, res) => {
+    try {
+      const categories = await ParentCategory.find()
+        
+  
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  router.get('/getSingleCategory/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      // Find the parent category by ID and populate its subcategories
+      const category = await ParentCategory.findById(id).populate('subCategories');
+  
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+  
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+router.post('/createSubCategory', async (req, res) => {
+    const { name, description, image, parentCategory, subSubCategories, isActive } = req.body;
+
+  try {
+    const subCategory = await SubCategory.create({
+      name,
+      description,
+      image,
+      parentCategory,
+      subSubCategories,
+      isActive
+    });
+    const savedSubCategory = await subCategory.save();
+
+    // Step 2: Update the ParentCategory with the new SubCategory ID
+    await ParentCategory.findByIdAndUpdate(
+      parentCategory,
+      { $push: { subCategories: savedSubCategory._id } },
+      { new: true }
+    );
+
+    res.status(201).json(savedSubCategory);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+  });
+  router.get('/getSubCategories', async (req, res) => {
+    try {
+      const categories = await ParentCategory.find()
+        .populate({
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+          }
+        })
+        .exec();
+  
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  router.get('/getSubSubCategories', async (req, res) => {
+    try {
+      const categories = await ParentCategory.find()
+        .populate({
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate: {
+              path: 'subSubSubCategories'
+            }
+          }
+        })
+        .exec();
+  
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.get('/getSubSubSubCategories', async (req, res) => {
+    try {
+      const categories = await ParentCategory.find()
+        .populate({
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate: {
+              path: 'subSubSubCategories'
+            }
+          }
+        })
+        .exec();
+  
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+//   router.post('/createSubSubSubCategory', async (req, res) => {
+//     try {
+//         const { name, description, parentSubSubCategoryId } = req.body;
+    
+//         // Step 1: Create the SubSubCategory
+//         const subSubSubCategory = new SubSubSubCategory({
+//           name,
+//           description,
+//           parentSubSubCategory: parentSubSubCategoryId
+//         });
+    
+//         const savedSubSubSubCategory = await subSubSubCategory.save();
+    
+//         // Step 2: Update the SubCategory with the new SubSubCategory ID
+//         await SubCategory.findByIdAndUpdate(
+//           parentSubSubCategoryId,
+//           { $push: { subSubSubCategories: savedSubSubSubCategory._id } },
+//           { new: true }
+//         );
+    
+//         res.status(201).json(savedSubSubSubCategory);
+//       } catch (error) {
+//         console.error(error);
+//         res.status(500).json(error);
+//       }
+//   });
+router.post('/createSubSubSubCategory', async (req, res) => {
+    try {
+      const { name, description, image, parentSubSubCategory } = req.body;
+  
+      // Check if parentSubCategory is provided
+      if (!parentSubSubCategory) {
+        return res.status(400).json({ error: 'Parent SubCategory ID is required.' });
+      }
+  
+      // Create a new SubSubSubCategory
+      const newSubSubSubCategory = new SubSubSubCategory({
+        name,
+        description,
+        image,
+        parentSubSubCategory
+      });
+  
+      // Save the new SubSubSubCategory to the database
+      const savedCategory = await newSubSubSubCategory.save();
+  
+      // Optionally, add the SubSubSubCategory to the parent SubCategory's subSubSubCategories array
+      await SubSubCategory.findByIdAndUpdate(parentSubSubCategory, {
+        $push: { subSubSubCategories: savedCategory._id }
+      });
+  
+      res.status(201).json(savedCategory);
+    } catch (error) {
+      console.error("Error creating SubSubSubCategory:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+router.post('/createSubSubCategory', async (req, res) => {
+    try {
+        const { name, description, parentSubCategoryId } = req.body;
+    
+        // Step 1: Create the SubSubCategory
+        const subSubCategory = new SubSubCategory({
+          name,
+          description,
+          parentSubCategory: parentSubCategoryId
+        });
+    
+        const savedSubSubCategory = await subSubCategory.save();
+    
+        // Step 2: Update the SubCategory with the new SubSubCategory ID
+        await SubCategory.findByIdAndUpdate(
+          parentSubCategoryId,
+          { $push: { subSubCategories: savedSubSubCategory._id } },
+          { new: true }
+        );
+    
+        res.status(201).json(savedSubSubCategory);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create sub-subcategory' });
+      }
+  });
+
+  router.post('/editcategory/:id', async (req, res) => {
+    const { id } = req.params;       // Extract id from URL params
+    const updateFields = req.body;    // Get update fields from request body
+  
+    try {
+      // Find the category by ID and update with fields provided in the request body
+      const updatedCategory = await ParentCategory.findByIdAndUpdate(
+        id,                     // Filter by ID
+        { $set: updateFields },  // Update fields dynamically
+        { new: true, upsert: false } // Return the updated document if found, don't create a new one
+      );
+  
+      // If no category is found, send an error response
+      if (!updatedCategory) {
+        return res.status(404).json({ success: false, message: 'Category not found' });
+      }
+  
+      // Send the updated category as a response
+      return res.status(200).json({ success: true, message: 'Category updated', data: updatedCategory });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+  router.post('/deletecategory/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the category by ID and populate subCategories and subSubCategories
+        const category = await ParentCategory.findById(id).populate({
+            path: 'subCategories',
+            populate: {
+                path: 'subSubCategories'
+            }
         });
 
-        // Save the new category
-        await category.save();
-
-        res.status(201).json({ success: true, category });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-router.post('/editcategory', async (req, res) => {
-    const { name, ...updateFields } = req.body; // Extract name and other fields
-
-    // Check if 'name' is provided to identify the category to update
-    if (!name) {
-        return res.status(400).json({ success: false, message: 'Name is required to find the category' });
-    }
-
-    try {
-        // Find the category by name and update with fields provided in the request body
-        const updatedCategory = await Category.findOneAndUpdate(
-            { name },                 // Filter by name
-            { $set: updateFields },    // Update fields dynamically
-            { new: true, upsert: false } // Return the updated document if found, don't create a new one
-        );
-
-        // If no category is found, send an error response
-        if (!updatedCategory) {
-            return res.status(404).json({ success: false, message: 'Category not found' });
-        }
-
-        // Send the updated category as a response
-        return res.status(200).json({ success: true, message: 'Category updated', data: updatedCategory });
-    } catch (error) {
-        console.error('Error updating category:', error);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-router.post('/deletecategory/:name', async (req, res) => {
-    try {
-        const { name } = req.params;
-
-        const category = await Category.findOne({ name }).populate('subCategories');
         if (!category) {
             return res.status(404).json({ success: false, message: 'Category not found' });
         }
 
         // Delete all associated SubCategories and SubSubCategories
         for (const subCategory of category.subCategories) {
-            await SubSubCategory.deleteMany({ _id: { $in: subCategory.subSubCategories } });
+            await SubSubCategory.deleteMany({ _id: { $in: subCategory.subSubCategories.map(sub => sub._id) } });
             await SubCategory.findByIdAndDelete(subCategory._id);
         }
 
         // Delete the Category
-        await category.deleteOne();
+        await ParentCategory.findByIdAndDelete(id);
 
-        res.status(200).json({ success: true, message: 'Category and its subcategories deleted successfully' });
+        // Check and delete category references in CustomSections if categoryId matches
+        const customSection = await CustomSection.findOne({ 'categoryId': id });
+        if (customSection) {
+            await CustomSection.deleteMany({ 'categoryId': id });
+        }
+
+        // Check and delete category references in Carousel if categoryId matches
+        const carouselItem = await Carousel.findOne({ 'categoryId': id });
+        if (carouselItem) {
+            await Carousel.deleteMany({ 'categoryId': id });
+        }
+
+        res.status(200).json({ success: true, message: 'Category and its subcategories deleted successfully, along with associated entries in CustomSections and Carousel if they existed.' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-
 router.post('/createsubcategory', async (req, res) => {
     try {
         const { name, categoryName } = req.body;
 
+        // Validate input
         if (!name || !categoryName) {
             return res.status(400).json({ success: false, message: 'Name and category name are required' });
         }
@@ -285,20 +571,80 @@ router.post('/createsubcategory', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Category not found' });
         }
 
-        // Check if a subcategory with the same name already exists
-        const existingSubCategory = await SubCategory.findOne({ name });
+        // Check if a subcategory with the same name already exists under the same category
+        const existingSubCategory = await SubCategory.findOne({ name, category: category._id });
         if (existingSubCategory) {
-            return res.status(400).json({ success: false, message: 'SubCategory with this name already exists' });
+            return res.status(400).json({ success: false, message: 'Subcategory with this name already exists in this category' });
         }
 
-        const subCategory = new SubCategory({ name });
+        // Create the subcategory
+        const subCategory = new SubCategory({
+            name,
+            category: category._id // Ensure the subcategory is associated with the category
+        });
+
+        // Save the subcategory
         await subCategory.save();
 
-        // Add the new SubCategory to the Category
+        // Add the new SubCategory to the Category's subCategories array
         category.subCategories.push(subCategory._id);
+
+        // Save the updated category
         await category.save();
 
-        res.status(201).json({ success: true, subCategory });
+        // Respond with the created subcategory and the updated category
+        res.status(201).json({
+            success: true,
+            message: 'Subcategory created successfully',
+            subCategory,
+            category
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+// Get all subcategories in a category
+router.get('/getsubcategories/:categoryName', async (req, res) => {
+    try {
+        const { categoryName } = req.params;
+
+        // Find the category by name and populate the subCategories array
+        const category = await Category.findOne({ name: categoryName }).populate('subCategories');
+        
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Return the populated subCategories
+        res.status(200).json({ success: true, subCategories: category.subCategories });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+router.get('/getsubsubcategories/:categoryName', async (req, res) => {
+    try {
+        const { categoryName } = req.params;
+
+        // Find the category by name and populate the subCategories and their subSubCategories
+        const category = await Category.findOne({ name: categoryName })
+            .populate({
+                path: 'subCategories',
+                populate: {
+                    path: 'subSubCategories' // Assuming this is the correct field name
+                }
+            });
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Gather all subSubCategories from each subCategory
+        const subSubCategories = category.subCategories.flatMap(subCategory => subCategory.subSubCategories);
+
+        // Return the populated subSubCategories
+        res.status(200).json({ success: true, subSubCategories });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -412,157 +758,139 @@ router.delete('/deletesubsubcategory/:name', async (req, res) => {
     }
 });
 //craete product variant
-router.post('/create-product-variant',async(req,res)=>{
-    try{
-        const {productId, variantName, variantPrice, sizes,images} = req.body
-    if (!productId || !variantName || !variantPrice) {
-        return res.status(400).json({ message: 'productId, variant type, variant name, and variant price are required' });
+router.post('/create-product-variant', async (req, res) => {
+    try {
+        const {
+            productId,
+            variantName,
+            variantPrice,
+            sizes,
+            images,
+            customFields,
+            availableStock,
+            maxQtyPerOrder,
+            productSellingPrice
+        } = req.body;
 
-    }
-    const existingProduct = await Product.findById(productId);
-    if (!existingProduct) {
-        return res.status(404).json({ message: 'Product not found' });
-    }
-    const newVariant = new ProductVariant({
-        productId,
-        variantName,
-        variantPrice,
-        sizes,
-        images: images || []
-    });
-    const savedVariant = await newVariant.save();
-   
-    if (!Array.isArray(existingProduct.variants)) {
-        existingProduct.variants = [];
-    }
-    existingProduct.variants.push(savedVariant._id)
-    await existingProduct.save();
-    return res.status(201).json({ message: 'Product variant created successfully', variant: savedVariant });
-    }
-    catch(error){
+        // Validate required fields
+        if (!productId || !variantName || !variantPrice == null || productSellingPrice == null) {
+            return res.status(400).json({ message: 'productId, variant name, variant price, product MRP, and product selling price are required' });
+        }
+
+        // Check if the product exists
+        const existingProduct = await Product.findById(productId);
+        if (!existingProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // Create new variant with the new fields
+        const newVariant = new ProductVariant({
+            productId,
+            variantName,
+            variantPrice,
+            sizes: sizes || [],
+            images: images || [],
+            availableStock: availableStock || 0,
+            maxQtyPerOrder: maxQtyPerOrder || 5,
+            productSellingPrice,
+            customFields: customFields || {}
+        });
+
+        // Save the new variant
+        const savedVariant = await newVariant.save();
+
+        // Update the product with the new variant ID
+        if (!Array.isArray(existingProduct.variants)) {
+            existingProduct.variants = [];
+        }
+        existingProduct.variants.push(savedVariant._id);
+        await existingProduct.save();
+
+        return res.status(201).json({
+            message: 'Product variant created successfully',
+            variant: savedVariant
+        });
+    } catch (error) {
         console.error('Error creating product variant:', error);
         return res.status(500).json({ message: 'Server error' });
     }
-})  
-
-//get product by variant
-router.post('/getproducts-by-variant', async (req, res) => {
-    try {
-        const { variantType, variantName } = req.query;
-
-        if (!variantType || !variantName) {
-            return res.status(400).json({ message: 'variantType and variantName are required' });
-        }
-
-        const variants = await ProductVariant.find({variantType,
-            variantName,}).populate('productId');
-
-        if (variants.length === 0) {
-            return res.status(404).json({ message: 'No products found for this variant' });
-        }
-
-        const products = variants.map(variant => variant.productId);
-
-        return res.status(200).json({ products });
-    } catch (error) {
-        console.error('Error fetching products by variant:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
 });
-
-// Create product
-router.post('/createproduct', async (req, res) => {
+// PUT /edit-product-variant/:variantId
+router.post('/edit-product-variant/:variantId', async (req, res) => {
     try {
-        const { name, price,shortDetails, description,productSpecs, images, category, subCategory, subSubCategory, brand, seller, stock, reviews, metatitle,metadescription,metakeyword,metascript } = req.body;
+      const { variantId } = req.params;
+      const {
+        variantName,
+        variantPrice,
+        sizes,
+        images,
+        customFields,
+        availableStock,
+        maxQtyPerOrder
+      } = req.body;
+  
+      // Check if variant exists
+      const variant = await ProductVariant.findById(variantId);
+      if (!variant) {
+        return res.status(404).json({ message: 'Product variant not found' });
+      }
+  
+      // Update fields if provided in the request body
+      if (variantName) variant.variantName = variantName;
+      if (variantPrice) variant.variantPrice = variantPrice;
+      if (sizes) variant.sizes = sizes;
+      if (images) variant.images = images;
+      if (customFields) variant.customFields = customFields;
+      if (availableStock !== undefined) variant.availableStock = availableStock;
+      if (maxQtyPerOrder !== undefined) variant.maxQtyPerOrder = maxQtyPerOrder;
 
-        // Validate required fields
-        if (!name || !price || !description || !brand || !shortDetails) {
-            return res.status(400).json({ message: 'Name, price, description, and brand are required' });
-        }
-
-        // Find or create Brand
-        let brandDoc = await Brand.findOne({ name: brand });
-        if (!brandDoc) {
-            brandDoc = await Brand.create({ name: brand });
-        }
-
-        // Find or create Category (if provided)
-        let categoryDoc;
-        if (category) {
-            categoryDoc = await Category.findOne({ name: category });
-            if (!categoryDoc) {
-                categoryDoc = await Category.create({ name: category });
-            }
-        }
-
-        // Find or create SubCategory (if provided)
-        let subCategoryDoc;
-        if (subCategory) {
-            subCategoryDoc = await SubCategory.findOne({ name: subCategory });
-            if (!subCategoryDoc) {
-                subCategoryDoc = await SubCategory.create({ name: subCategory });
-                
-                // If category is provided, link the new subCategory
-                if (categoryDoc) {
-                    categoryDoc.subCategories.push(subCategoryDoc._id);
-                    await categoryDoc.save();
-                }
-            }
-        }
-
-        // Find or create SubSubCategory (if provided)
-        let subSubCategoryDoc;
-        if (subSubCategory) {
-            subSubCategoryDoc = await SubSubCategory.findOne({ name: subSubCategory });
-            if (!subSubCategoryDoc) {
-                subSubCategoryDoc = await SubSubCategory.create({ name: subSubCategory });
-                
-                // If subCategory is provided, link the new subSubCategory
-                if (subCategoryDoc) {
-                    subCategoryDoc.subSubCategories.push(subSubCategoryDoc._id);
-                    await subCategoryDoc.save();
-                }
-            }
-        }
-
-        // Prepare reviews (if provided)
-        let processedReviews = [];
-        if (reviews && Array.isArray(reviews)) {
-            processedReviews = reviews.map(review => ({
-                ...review,
-                user: review.user ? new mongoose.Types.ObjectId(review.user) : undefined
-            }));
-        }
-
-        // Create the product
-        const newProduct = new Product({
-            name,
-            price,
-            shortDetails,
-            description,
-            productSpecs,
-            images: images || [], // Default to an empty array if images are not provided
-            category: categoryDoc ? categoryDoc._id : undefined,
-            subCategory: subCategoryDoc ? subCategoryDoc._id : undefined,
-            subSubCategory: subSubCategoryDoc ? subSubCategoryDoc._id : undefined,
-            brand: brandDoc._id,
-            seller: seller || '', // Default to an empty string if the seller is not provided
-            stock: stock !== undefined ? stock : 0, // Default stock to 0 if not provided
-            reviews: processedReviews,
-            metadescription,
-            metascript,
-            metakeyword,
-            metatitle
-        });
-
-        const savedProduct = await newProduct.save();
-
-        return res.status(201).json({ message: 'Product created successfully', product: savedProduct });
+  
+      // Save the updated variant
+      const updatedVariant = await variant.save();
+      return res.status(200).json({ message: 'Product variant updated successfully', variant: updatedVariant });
+  
     } catch (error) {
-        console.error('Error creating product:', error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
+      console.error('Error updating product variant:', error);
+      return res.status(500).json({ message: 'Server error' });
     }
-});
+  });
+  // GET /get-product-variant/:variantId
+  router.get('/products/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const product = await Product.findById(id);
+  
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+  
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+  router.get('/get-product-variant/:variantId', async (req, res) => {
+    try {
+      const { variantId } = req.params;
+  
+      // Find the variant by ID
+      const variant = await ProductVariant.findById(variantId);
+  
+      // If the variant does not exist, return a 404 error
+      if (!variant) {
+        return res.status(404).json({ message: 'Product variant not found' });
+      }
+  
+      // Return the variant data
+      return res.status(200).json(variant);
+    } catch (error) {
+      console.error('Error fetching product variant:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+
+
 //get allproduct
 router.post('/deleteproduct',async(req,res)=>{
     try {
@@ -572,30 +900,6 @@ router.post('/deleteproduct',async(req,res)=>{
         console.log(error)
         res.send(error)
     } 
-})
-router.get('/getproducts',async(req,res)=>{
-    try{
-        const data = await Product.find()
-        .populate({
-          path: 'category',
-          populate: {
-            path: 'subCategories',
-            populate: {
-              path: 'subSubCategories'
-            }
-          }
-        })
-        .populate('subCategory')  // Direct population for subCategory reference in Product schema
-        .populate('subSubCategory') // Direct population for subSubCategory reference in Product schema
-        .populate('brand')  // Populates brand details
-        .populate({
-          path: 'variants', // Populates variants and includes the necessary fields for each variant
-          model: 'ProductVariant'
-        });
-   res.send(data)   
-    }catch(error){
-        res.send(error)
-    }
 })
 
 // get products according to the filters
@@ -713,31 +1017,37 @@ router.post('/update-product/:productId', async (req, res) => {
     try {
         // Convert brand name to ObjectId if provided
         if (updateData.brand) {
-            const brandDoc = await Brand.findOne({ name: updateData.brand });
+            const brandDoc = await Brand.findById(updateData.brand);
             if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
             updateData.brand = brandDoc._id;
         }
 
         // Convert category name to ObjectId if provided
         if (updateData.category) {
-            const categoryDoc = await Category.findOne({ name: updateData.category });
+            const categoryDoc = await ParentCategory.findById( updateData.category);
             if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
             updateData.category = categoryDoc._id;
         }
 
         // Convert subCategory name to ObjectId if provided
         if (updateData.subCategory) {
-            const subCategoryDoc = await SubCategory.findOne({ name: updateData.subCategory });
+            const subCategoryDoc = await SubCategory.findById(updateData.subCategory);
             if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
             updateData.subCategory = subCategoryDoc._id;
         }
 
         // Convert subSubCategory name to ObjectId if provided
         if (updateData.subSubCategory) {
-            const subSubCategoryDoc = await SubSubCategory.findOne({ name: updateData.subSubCategory });
+            const subSubCategoryDoc = await SubSubCategory.findById( updateData.subSubCategory );
             if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
             updateData.subSubCategory = subSubCategoryDoc._id;
         }
+        if (updateData.subSubSubCategory) {
+            const subSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory );
+            if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
+            updateData.subSubCategory = subSubCategoryDoc._id;
+        }
+
 
         // Exclude updatedAt field from updateData if it exists
         delete updateData.updatedAt;
@@ -762,11 +1072,9 @@ router.post('/deleteproduct/:id', async (req, res) => {
         const { id } = req.params;
 
         const deletedProduct = await Product.findByIdAndDelete(id);
-
         if (!deletedProduct) {
             return res.status(404).json({ message: 'Product not found' });
         }
-
         return res.status(200).json({ message: 'Product deleted successfully', product: deletedProduct });
     } catch (error) {
         console.error('Error deleting product:', error);
