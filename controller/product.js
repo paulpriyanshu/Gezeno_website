@@ -21,29 +21,29 @@ const router = express.Router()
 
 router.post('/createbrands', async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, image } = req.body;
         if(!name){
             return res.status(400).json({ message: 'Enter name' });
         }
-        const brandExists = await users.findOne({name});
+        const brandExists = await Brand.findOne({name});
         if(brandExists){
             return res.status(400).json({ message: 'Brand already exists' });
         }
-        const brand = new Brand({ name });
+        const brand = new Brand({ name ,image });
         await brand.save();
         res.status(201).json({ success: true, data: brand });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
 });
-router.post('/deletebrand', async (req, res) => {
+router.post('/deletebrand/:id', async (req, res) => {
     try {
-        const { name } = req.body;
-        if (!name) {
-            return res.status(400).json({ message: 'Enter brand name to delete' });
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'Enter brand id to delete' });
         }
 
-        const brand = await Brand.findOneAndDelete({ name });
+        const brand = await Brand.findByIdAndDelete(id);
 
         if (!brand) {
             return res.status(404).json({ message: 'Brand not found' });
@@ -350,6 +350,51 @@ router.post('/createSubCategory', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
   });
+  router.post('/updateSubCategory/:id', async (req, res) => {
+    const { id } = req.params; // SubCategory ID to update
+    const { name, description, image, parentCategory, subSubCategories, isActive } = req.body;
+  
+    try {
+      // Find the SubCategory by ID
+      const subCategory = await SubCategory.findById(id);
+      if (!subCategory) {
+        return res.status(404).json({ error: 'SubCategory not found.' });
+      }
+  
+      // Update fields if they are provided
+      if (name) subCategory.name = name;
+      if (description) subCategory.description = description;
+      if (image) subCategory.image = image;
+      if (typeof isActive !== 'undefined') subCategory.isActive = isActive;
+  
+      // Update subSubCategories array if provided
+      if (subSubCategories) subCategory.subSubCategories = subSubCategories;
+  
+      // Handle parentCategory update
+      if (parentCategory && parentCategory !== subCategory.parentCategory) {
+        // Remove SubCategory ID from the old parent's subCategories array
+        await ParentCategory.findByIdAndUpdate(subCategory.parentCategory, {
+          $pull: { subCategories: subCategory._id }
+        });
+  
+        // Add SubCategory ID to the new parent's subCategories array
+        await ParentCategory.findByIdAndUpdate(parentCategory, {
+          $push: { subCategories: subCategory._id }
+        });
+  
+        // Update the parentCategory field
+        subCategory.parentCategory = parentCategory;
+      }
+  
+      // Save the updated SubCategory
+      const updatedSubCategory = await subCategory.save();
+  
+      res.status(200).json(updatedSubCategory);
+    } catch (error) {
+      console.error('Error updating SubCategory:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
   router.get('/getSubCategories', async (req, res) => {
     try {
       const categories = await ParentCategory.find()
@@ -650,31 +695,39 @@ router.get('/getsubsubcategories/:categoryName', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.delete('/deletesubcategory/:name', async (req, res) => {
+router.post('/deleteSubCategory/:id', async (req, res) => {
     try {
-        const { name } = req.params;
+        const { id } = req.params;
 
-        const subCategory = await SubCategory.findOne({ name });
+        // Ensure the ID is valid
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'SubCategory ID is required' });
+        }
+
+        // Find the subCategory by ID
+        const subCategory = await SubCategory.findById(id);
         if (!subCategory) {
             return res.status(404).json({ success: false, message: 'SubCategory not found' });
         }
 
         // Delete all associated SubSubCategories
-        await SubSubCategory.deleteMany({ _id: { $in: subCategory.subSubCategories } });
+        if (subCategory.subSubCategories && subCategory.subSubCategories.length > 0) {
+            await SubSubCategory.deleteMany({ _id: { $in: subCategory.subSubCategories } });
+        }
 
         // Remove the subCategory from its parent Category
-        await Category.updateOne(
-            { subCategories: subCategory._id },
-            { $pull: { subCategories: subCategory._id } }
-        );
+        const parentCategory = await ParentCategory.findOne({ subCategories: subCategory._id });
+        if (parentCategory) {
+            await parentCategory.updateOne({ $pull: { subCategories: subCategory._id } });
+        }
 
         // Delete the subCategory
-        await subCategory.deleteOne();
+        await SubCategory.deleteOne({ _id: id });
 
-        res.status(200).json({ success: true, message: 'SubCategory and its sub-subcategories deleted successfully' });
+        res.status(200).json({ success: true, message: 'SubCategory and its associated sub-subcategories deleted successfully' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('Error deleting subcategory:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 router.post('/createsubsubcategory', async (req, res) => {
