@@ -36,6 +36,77 @@ router.post('/createbrands', async (req, res) => {
         res.status(400).json({ success: false, message: error.message });
     }
 });
+router.post('/updateBrand/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, image } = req.body;
+
+        // Validate input
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'Brand ID is required' });
+        }
+
+        if (!name && !image) {
+            return res.status(400).json({ success: false, message: 'At least one field (name or image) must be provided to update' });
+        }
+
+        // Find the brand by ID
+        const brand = await Brand.findById(id);
+        if (!brand) {
+            return res.status(404).json({ success: false, message: 'Brand not found' });
+        }
+
+        // Check for duplicate brand name
+        if (name && name !== brand.name) {
+            const brandExists = await Brand.findOne({ name });
+            if (brandExists) {
+                return res.status(400).json({ success: false, message: 'Brand with this name already exists' });
+            }
+        }
+
+        // Update brand details
+        if (name) brand.name = name;
+        if (image) brand.image = image;
+
+        await brand.save();
+
+        res.status(200).json({ success: true, message: 'Brand updated successfully', data: brand });
+    } catch (error) {
+        console.error('Error updating brand:', error);
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    }
+});
+router.get('/toggleBrand/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate brand ID
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'Brand ID is required' });
+        }
+
+        // Find the brand by ID
+        const brand = await Brand.findById(id);
+        if (!brand) {
+            return res.status(404).json({ success: false, message: 'Brand not found' });
+        }
+
+        // Toggle the `isActive` field
+        brand.isActive = !brand.isActive;
+
+        // Save the updated brand
+        await brand.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Brand status updated to ${brand.isActive ? 'active' : 'inactive'}`,
+            data: brand
+        });
+    } catch (error) {
+        console.error('Error toggling brand status:', error);
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    }
+});
 router.post('/deletebrand/:id', async (req, res) => {
     try {
         const { id } = req.params;
