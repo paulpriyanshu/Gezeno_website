@@ -240,7 +240,7 @@ router.post('/carousel/:id', async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
-router.post('/banner/:id', async (req, res) => {
+router.post('/deletebanner/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const deletedBanner = await Banner.findByIdAndDelete(id);
