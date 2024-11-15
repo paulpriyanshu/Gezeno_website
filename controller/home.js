@@ -184,10 +184,32 @@ router.post('/carousel', async (req, res) => {
   // Add banner
   router.post('/banner', async (req, res) => {
     try {
-      const { url } = req.body;
-      const newBanner = new Banner({ url });
+      const { url,redirectUrl } = req.body;
+
+      const newBanner=new Banner({ url,redirectUrl });
       await newBanner.save();
       res.status(201).json({ message: 'Banner added', data: newBanner });
+    } catch (error) {
+      res.status(500).json({ message: 'An error occurred', error: error.message });
+    }
+  });
+  router.post('/banner/:id', async (req, res) => {
+    try {
+      const { id } = req.params; // Get the banner ID from the URL
+      const { url, redirectUrl } = req.body; // Get the updated fields from the request body
+  
+      // Find the banner by ID and update it with new values
+      const updatedBanner = await Banner.findByIdAndUpdate(
+        id,
+        { url, redirectUrl }, // Fields to update
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedBanner) {
+        return res.status(404).json({ message: 'Banner not found' });
+      }
+  
+      res.status(200).json({ message: 'Banner updated successfully', data: updatedBanner });
     } catch (error) {
       res.status(500).json({ message: 'An error occurred', error: error.message });
     }
@@ -262,27 +284,27 @@ router.post('/custom-section/:id', async (req, res) => {
           path: 'subCategories'
         }
       });
-      const secondarycarousel = await SecondaryCarousel.find()
-      .populate({
-        path: 'categoryId',
-        populate: {
-          path: 'subCategories'
-        }
-      });
-      const thirdcarousel = await ThirdCarousel.find()
-      .populate({
-        path: 'categoryId',
-        populate: {
-          path: 'subCategories'
-        }
-      });
-      const fourthcarousel = await FourthCarousel.find()
-      .populate({
-        path: 'categoryId',
-        populate: {
-          path: 'subCategories'
-        }
-      });
+    //   const secondarycarousel = await SecondaryCarousel.find()
+    //   .populate({
+    //     path: 'categoryId',
+    //     populate: {
+    //       path: 'subCategories'
+    //     }
+    //   });
+    //   const thirdcarousel = await ThirdCarousel.find()
+    //   .populate({
+    //     path: 'categoryId',
+    //     populate: {
+    //       path: 'subCategories'
+    //     }
+    //   });
+    //   const fourthcarousel = await FourthCarousel.find()
+    //   .populate({
+    //     path: 'categoryId',
+    //     populate: {
+    //       path: 'subCategories'
+    //     }
+    //   });
       const ourbestpicks = await OurBestPicks.find().populate('categoryId')
       .populate({
         path: 'categoryId',

@@ -200,7 +200,8 @@ const fourthcarouselSchema = new mongoose.Schema({
 const FourthCarousel = mongoose.model('FourthCarousel', fourthcarouselSchema);
 
   const bannerSchema = new mongoose.Schema({
-    url: { type: String, required: true }
+    url: { type: String, required: true },
+    redirectUrl: {type:String,required:false}
   }, { timestamps: true });
 const Banner = mongoose.model('Banner', bannerSchema);
   
