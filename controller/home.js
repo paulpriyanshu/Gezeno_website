@@ -284,27 +284,27 @@ router.post('/custom-section/:id', async (req, res) => {
           path: 'subCategories'
         }
       });
-    //   const secondarycarousel = await SecondaryCarousel.find()
-    //   .populate({
-    //     path: 'categoryId',
-    //     populate: {
-    //       path: 'subCategories'
-    //     }
-    //   });
-    //   const thirdcarousel = await ThirdCarousel.find()
-    //   .populate({
-    //     path: 'categoryId',
-    //     populate: {
-    //       path: 'subCategories'
-    //     }
-    //   });
-    //   const fourthcarousel = await FourthCarousel.find()
-    //   .populate({
-    //     path: 'categoryId',
-    //     populate: {
-    //       path: 'subCategories'
-    //     }
-    //   });
+      const secondarycarousel = await SecondaryCarousel.find()
+      .populate({
+        path: 'categoryId',
+        populate: {
+          path: 'subCategories'
+        }
+      });
+      const thirdcarousel = await ThirdCarousel.find()
+      .populate({
+        path: 'categoryId',
+        populate: {
+          path: 'subCategories'
+        }
+      });
+      const fourthcarousel = await FourthCarousel.find()
+      .populate({
+        path: 'categoryId',
+        populate: {
+          path: 'subCategories'
+        }
+      });
       const ourbestpicks = await OurBestPicks.find().populate('categoryId')
       .populate({
         path: 'categoryId',
