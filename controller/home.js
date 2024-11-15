@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Carousel,Banner,CustomSection,Header, SecondaryCarousel, ThirdCarousel, FourthCarousel, OurBestPicks, TooHotToBeMissed, GezenoOriginals, Widgets } = require('../models/product'); // Ensure to import your models
+const { populate } = require('../models/users');
 
 router.post('/carousel', async (req, res) => {
     try {
@@ -271,7 +272,18 @@ router.post('/custom-section/:id', async (req, res) => {
   router.get('/home/config', async (req, res) => {
     try {
       // Fetch all carousel items
-      const carouselItems = await Carousel.find().populate('categoryId');
+      const carouselItems = await Carousel.find().populate({
+        path: 'categoryId',
+        populate: { 
+            path: 'subCategories',
+            populate:{
+                path:'subSubCategories',
+                populate:{
+                    path:'subSubSubCategories'
+                }
+            }
+        },
+      });
       
       // Fetch all banners
       const banners = await Banner.find();
@@ -281,56 +293,114 @@ router.post('/custom-section/:id', async (req, res) => {
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });
       const secondarycarousel = await SecondaryCarousel.find()
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
+
         }
       });
       const thirdcarousel = await ThirdCarousel.find()
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
+
         }
       });
       const fourthcarousel = await FourthCarousel.find()
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });
       const ourbestpicks = await OurBestPicks.find().populate('categoryId')
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });;
       const toohottobemissed = await TooHotToBeMissed.find().populate('categoryId')
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });;
       const gezenooriginals = await GezenoOriginals.find().populate('categoryId')
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });;
       const widgets=await Widgets.find().populate('categoryId')
       .populate({
         path: 'categoryId',
         populate: {
-          path: 'subCategories'
+          path: 'subCategories',
+          populate: {
+            path: 'subSubCategories',
+            populate:{
+                path:'subSubSubCategories'
+            }
+            
+          }
         }
       });
       // Fetch all headers

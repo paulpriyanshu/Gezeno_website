@@ -739,16 +739,64 @@ router.get('/getsubcategories/:categoryName', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.get('/getsubsubcategories/:categoryName', async (req, res) => {
+router.get('/subcategories/:id', async (req, res) => {
     try {
-        const { categoryName } = req.params;
+        const { id } = req.params;
+
+        // Find the category by name and populate the subCategories array
+        const category = await ParentCategory.findById(id).populate('subCategories');
+        
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Return the populated subCategories
+        res.status(200).json({ success: true, subCategories: category.subCategories });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+router.get('/subsubcategories/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
 
         // Find the category by name and populate the subCategories and their subSubCategories
-        const category = await Category.findOne({ name: categoryName })
+        const category = await ParentCategory.findById(id)
             .populate({
                 path: 'subCategories',
                 populate: {
                     path: 'subSubCategories' // Assuming this is the correct field name
+                }
+            });
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Gather all subSubCategories from each subCategory
+        const subSubCategories = category.subCategories.flatMap(subCategory => subCategory.subSubCategories);
+
+        // Return the populated subSubCategories
+        res.status(200).json({ success: true, subSubCategories });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+router.get('/subsubsubcategories/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the category by name and populate the subCategories and their subSubCategories
+        const category = await ParentCategory.findById(id)
+            .populate({
+                path: 'subCategories',
+                populate: {
+                    path: 'subSubCategories',
+                    populate: {
+                        path: 'subSubSubCategories' // Assuming this is the correct field name
+                    }
                 }
             });
 
