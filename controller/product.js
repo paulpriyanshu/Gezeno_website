@@ -721,25 +721,25 @@ router.post('/createsubcategory', async (req, res) => {
     }
 });
 // Get all subcategories in a category
-router.get('/getsubcategories/:categoryName', async (req, res) => {
-    try {
-        const { categoryName } = req.params;
+// router.get('/getsubcategories/:categoryName', async (req, res) => {
+//     try {
+//         const { categoryName } = req.params;
 
-        // Find the category by name and populate the subCategories array
-        const category = await Category.findOne({ name: categoryName }).populate('subCategories');
+//         // Find the category by name and populate the subCategories array
+//         const category = await Category.findOne({ name: categoryName }).populate('subCategories');
         
-        if (!category) {
-            return res.status(404).json({ success: false, message: 'Category not found' });
-        }
+//         if (!category) {
+//             return res.status(404).json({ success: false, message: 'Category not found' });
+//         }
 
-        // Return the populated subCategories
-        res.status(200).json({ success: true, subCategories: category.subCategories });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-router.get('/subcategories/:id', async (req, res) => {
+//         // Return the populated subCategories
+//         res.status(200).json({ success: true, subCategories: category.subCategories });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ success: false, message: 'Server error' });
+//     }
+// });
+router.get('/getsubcategories/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -757,7 +757,7 @@ router.get('/subcategories/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.get('/subsubcategories/:id', async (req, res) => {
+router.get('/getsubsubcategories/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -784,7 +784,7 @@ router.get('/subsubcategories/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.get('/subsubsubcategories/:id', async (req, res) => {
+router.get('/getsubsubsubcategories/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
