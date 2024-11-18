@@ -469,7 +469,9 @@ router.post('/createSubCategory', async (req, res) => {
   });
   router.get('/getSubCategories', async (req, res) => {
     try {
-      const categories = await SubCategory.find()
+      const categories = await SubCategory.find().populate({
+        path:'parentCategory'
+      })
   
   
       res.json(categories);
