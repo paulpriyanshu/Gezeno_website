@@ -5,6 +5,7 @@ const {  Brand,
     SubCategory,
     SubSubCategory,
     SubSubSubCategory,
+    SubSubSubSubCategory,
     Product,
     ProductVariant,Carousel,CustomSection} = require('../models/product')
 const nodemailer = require('nodemailer');
@@ -380,7 +381,7 @@ router.get('/getCategories', async (req, res) => {
     }
   });
   router.get('/getSingleCategory/:id', async (req, res) => {
-    try {
+    try { 
       const { id } = req.params;
   
       // Find the parent category by ID and populate its subcategories
@@ -468,14 +469,8 @@ router.post('/createSubCategory', async (req, res) => {
   });
   router.get('/getSubCategories', async (req, res) => {
     try {
-      const categories = await ParentCategory.find()
-        .populate({
-          path: 'subCategories',
-          populate: {
-            path: 'subSubCategories',
-          }
-        })
-        .exec();
+      const categories = await SubCategory.find()
+  
   
       res.json(categories);
     } catch (error) {
@@ -484,17 +479,9 @@ router.post('/createSubCategory', async (req, res) => {
   });
   router.get('/getSubSubCategories', async (req, res) => {
     try {
-      const categories = await ParentCategory.find()
-        .populate({
-          path: 'subCategories',
-          populate: {
-            path: 'subSubCategories',
-            populate: {
-              path: 'subSubSubCategories'
-            }
-          }
-        })
-        .exec();
+      const categories = await SubSubCategory.find()
+  
+      
   
       res.json(categories);
     } catch (error) {
@@ -504,49 +491,16 @@ router.post('/createSubCategory', async (req, res) => {
 
   router.get('/getSubSubSubCategories', async (req, res) => {
     try {
-      const categories = await ParentCategory.find()
-        .populate({
-          path: 'subCategories',
-          populate: {
-            path: 'subSubCategories',
-            populate: {
-              path: 'subSubSubCategories'
-            }
-          }
-        })
-        .exec();
+      const categories = await SubSubSubCategory.find()
   
       res.json(categories);
     } catch (error) {
       res.status(500).json({ error: error.message });
-    }
+    } 
   });
-//   router.post('/createSubSubSubCategory', async (req, res) => {
-//     try {
-//         const { name, description, parentSubSubCategoryId } = req.body;
-    
-//         // Step 1: Create the SubSubCategory
-//         const subSubSubCategory = new SubSubSubCategory({
-//           name,
-//           description,
-//           parentSubSubCategory: parentSubSubCategoryId
-//         });
-    
-//         const savedSubSubSubCategory = await subSubSubCategory.save();
-    
-//         // Step 2: Update the SubCategory with the new SubSubCategory ID
-//         await SubCategory.findByIdAndUpdate(
-//           parentSubSubCategoryId,
-//           { $push: { subSubSubCategories: savedSubSubSubCategory._id } },
-//           { new: true }
-//         );
-    
-//         res.status(201).json(savedSubSubSubCategory);
-//       } catch (error) {
-//         console.error(error);
-//         res.status(500).json(error);
-//       }
-//   });
+
+
+  
 router.post('/createSubSubSubCategory', async (req, res) => {
     try {
       const { name, description, image, parentSubSubCategory } = req.body;
@@ -578,23 +532,101 @@ router.post('/createSubSubSubCategory', async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
-router.post('/createSubSubCategory', async (req, res) => {
+  router.post('/deleteSubSubSubCategory/:id', async (req, res) => {
     try {
-        const { name, description, parentSubCategoryId } = req.body;
-    
-        // Step 1: Create the SubSubCategory
-        const subSubCategory = new SubSubCategory({
+      const { id } = req.params;
+  
+      // Check if ID is provided
+      if (!id) {
+        return res.status(400).json({ error: 'SubSubSubCategory ID is required.' });
+      }
+  
+      // Find the SubSubSubCategory to delete
+      const subSubSubCategory = await SubSubSubCategory.findById(id);
+  
+      if (!subSubSubCategory) {
+        return res.status(404).json({ error: 'SubSubSubCategory not found.' });
+      }
+  
+      // Remove the SubSubSubCategory from the parent SubSubCategory's subSubSubCategories array
+      await SubSubCategory.findByIdAndUpdate(subSubSubCategory.parentSubSubCategory, {
+        $pull: { subSubSubCategories: id }
+      });
+  
+      // Delete the SubSubSubCategory
+      await SubSubSubCategory.findByIdAndDelete(id);
+  
+      res.status(200).json({ message: 'SubSubSubCategory deleted successfully.' });
+    } catch (error) {
+      console.error('Error deleting SubSubSubCategory:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  router.post('/updateSubSubSubCategory/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, description, image, parentSubSubCategory } = req.body;
+  
+      // Check if the SubSubSubCategory exists
+      const existingCategory = await SubSubSubCategory.findById(id);
+      if (!existingCategory) {
+        return res.status(404).json({ error: 'SubSubSubCategory not found.' });
+      }
+  
+      // Handle the change of parentSubSubCategory (optional)
+      if (parentSubSubCategory && parentSubSubCategory !== existingCategory.parentSubSubCategory) {
+        // Remove the category from the old parent's subSubSubCategories array
+        await SubSubCategory.findByIdAndUpdate(existingCategory.parentSubSubCategory, {
+          $pull: { subSubSubCategories: id }
+        });
+  
+        // Add the category to the new parent's subSubSubCategories array
+        await SubSubCategory.findByIdAndUpdate(parentSubSubCategory, {
+          $push: { subSubSubCategories: id }
+        });
+      }
+  
+      // Update the SubSubSubCategory
+      const updatedCategory = await SubSubSubCategory.findByIdAndUpdate(
+        id,
+        {
           name,
           description,
-          parentSubCategory: parentSubCategoryId
+          image,
+          parentSubSubCategory: parentSubSubCategory || existingCategory.parentSubSubCategory,
+        },
+        { new: true } // Return the updated document
+      );
+  
+      res.status(200).json(updatedCategory);
+    } catch (error) {
+      console.error('Error updating SubSubSubCategory:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+router.post('/createSubSubCategory', async (req, res) => {
+    try {
+      const { name, description, image, parentSubCategory, subSubSubCategories, isActive } = req.body;
+    
+        // Step 1: Create the SubSubCategory
+        const subSubCategory = await SubSubCategory.create({
+          name,
+          description,
+          image,
+          parentSubCategory,
+          subSubSubCategories,
+          isActive 
         });
+
+    
     
         const savedSubSubCategory = await subSubCategory.save();
     
         // Step 2: Update the SubCategory with the new SubSubCategory ID
         await SubCategory.findByIdAndUpdate(
-          parentSubCategoryId,
-          { $push: { subSubCategories: savedSubSubCategory._id } },
+          parentSubCategory, 
+          { $push: { subSubCategories: savedSubSubCategory._id } }, 
           { new: true }
         );
     
@@ -603,6 +635,90 @@ router.post('/createSubSubCategory', async (req, res) => {
         console.error(error);
         res.status(500).json({ error: 'Failed to create sub-subcategory' });
       }
+  });
+  router.post('/updateSubSubCategory/:id', async (req, res) => {
+    try {
+      const { id } = req.params; // ID of the sub-subcategory to update
+      const { name, description, image, parentSubCategory, isActive } = req.body;
+  
+      // Step 1: Find the existing sub-subcategory
+      const existingSubSubCategory = await SubSubCategory.findById(id);
+      if (!existingSubSubCategory) {
+        return res.status(404).json({ error: 'Sub-subcategory not found' });
+      }
+  
+      // Step 2: Handle parentSubCategoryId change
+      if (parentSubCategory && parentSubCategory !== existingSubSubCategory.parentSubCategory) {
+        // Remove sub-subcategory ID from the old parent subcategory
+        if (existingSubSubCategory.parentSubCategory) {
+          await SubCategory.findByIdAndUpdate(
+            existingSubSubCategory.parentSubCategory,
+            { $pull: { subSubCategories: id } },
+            { new: true }
+          );
+        }
+  
+        // Add sub-subcategory ID to the new parent subcategory
+        await SubCategory.findByIdAndUpdate(
+          parentSubCategory,
+          { $push: { subSubCategories: id } },
+          { new: true }
+        );
+      }
+  
+      // Step 3: Update the sub-subcategory details
+      const updatedSubSubCategory = await SubSubCategory.findByIdAndUpdate(
+        id,
+        {
+          name,
+          description,
+          image,
+          parentSubCategory,
+          isActive,
+        },
+        { new: true }
+      );
+  
+      res.status(200).json(updatedSubSubCategory);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to update sub-subcategory' });
+    }
+  });
+  router.post('/deleteSubSubCategory/:id', async (req, res) => {
+    try {
+      const { id } = req.params; // ID of the sub-subcategory to delete
+  
+      // Step 1: Find the existing SubSubCategory
+      const existingSubSubCategory = await SubSubCategory.findById(id);
+      if (!existingSubSubCategory) {
+        return res.status(404).json({ error: 'Sub-subcategory not found' });
+      }
+  
+      const { parentSubCategoryId, subSubSubCategories } = existingSubSubCategory;
+  
+      // Step 2: Remove the SubSubCategory ID from the parent SubCategory
+      if (parentSubCategoryId) {
+        await SubCategory.findByIdAndUpdate(
+          parentSubCategoryId,
+          { $pull: { subSubCategories: id } },
+          { new: true }
+        );
+      }
+  
+      // Step 3: Delete all associated SubSubSubCategories
+      if (subSubSubCategories && subSubSubCategories.length > 0) {
+        await SubSubSubCategory.deleteMany({ _id: { $in: subSubSubCategories } });
+      }
+  
+      // Step 4: Delete the SubSubCategory
+      await SubSubCategory.findByIdAndDelete(id);
+  
+      res.status(200).json({ message: 'Sub-subcategory and its sub-sub-subcategories deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting sub-subcategory:', error);
+      res.status(500).json({ error: 'Failed to delete sub-subcategory' });
+    }
   });
 
   router.post('/editcategory/:id', async (req, res) => {
@@ -672,73 +788,42 @@ router.post('/createSubSubCategory', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-router.post('/createsubcategory', async (req, res) => {
-    try {
-        const { name, categoryName } = req.body;
+router.get('/getcategory/:categoryId', async (req, res) => {
+  const { categoryId } = req.params;
 
-        // Validate input
-        if (!name || !categoryName) {
-            return res.status(400).json({ success: false, message: 'Name and category name are required' });
-        }
+  try {
+    let categoryType = null;
+    let data = null;
 
-        // Find the category by name
-        const category = await Category.findOne({ name: categoryName });
-        if (!category) {
-            return res.status(404).json({ success: false, message: 'Category not found' });
-        }
+    // Check each category collection in sequence
+    if (!data) data = await ParentCategory.findById(categoryId);
+    if (data) categoryType = 'ParentCategory';
 
-        // Check if a subcategory with the same name already exists under the same category
-        const existingSubCategory = await SubCategory.findOne({ name, category: category._id });
-        if (existingSubCategory) {
-            return res.status(400).json({ success: false, message: 'Subcategory with this name already exists in this category' });
-        }
+    if (!data) data = await SubCategory.findById(categoryId);
+    if (data) categoryType = 'SubCategory';
 
-        // Create the subcategory
-        const subCategory = new SubCategory({
-            name,
-            category: category._id // Ensure the subcategory is associated with the category
-        });
+    if (!data) data = await SubSubCategory.findById(categoryId);
+    if (data) categoryType = 'SubSubCategory';
 
-        // Save the subcategory
-        await subCategory.save();
+    if (!data) data = await SubSubSubCategory.findById(categoryId);
+    if (data) categoryType = 'SubSubSubCategory';
 
-        // Add the new SubCategory to the Category's subCategories array
-        category.subCategories.push(subCategory._id);
+    if (!data) data = await SubSubSubSubCategory.findById(categoryId);
+    if (data) categoryType = 'SubSubSubSubCategory';
 
-        // Save the updated category
-        await category.save();
-
-        // Respond with the created subcategory and the updated category
-        res.status(201).json({
-            success: true,
-            message: 'Subcategory created successfully',
-            subCategory,
-            category
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
+    if (!data) {
+      return res.status(404).json({ message: 'Category not found' });
     }
+
+    // Return the found category
+    res.status(200).json({ categoryType, data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
-// Get all subcategories in a category
-// router.get('/getsubcategories/:categoryName', async (req, res) => {
-//     try {
-//         const { categoryName } = req.params;
 
-//         // Find the category by name and populate the subCategories array
-//         const category = await Category.findOne({ name: categoryName }).populate('subCategories');
-        
-//         if (!category) {
-//             return res.status(404).json({ success: false, message: 'Category not found' });
-//         }
 
-//         // Return the populated subCategories
-//         res.status(200).json({ success: true, subCategories: category.subCategories });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ success: false, message: 'Server error' });
-//     }
-// });
 router.get('/getsubcategories/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -775,6 +860,11 @@ router.get('/getsubsubcategories/:subcategoryId', async (req, res) => {
       res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+router.get('/hello',async(req,res)=>{
+  res.json({
+    msg:'hello '
+  })
+})
 router.get('/getsubsubsubcategories/:subSubCategoryId', async (req, res) => {
   try {
       const { subSubCategoryId } = req.params;
@@ -828,62 +918,7 @@ router.post('/deleteSubCategory/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
-router.post('/createsubsubcategory', async (req, res) => {
-    try {
-        const { name, categoryName, subCategoryName } = req.body;
 
-        if (!name || !categoryName || !subCategoryName) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Name, category name, and subcategory name are required' 
-            });
-        }
-
-        // Find the category by name
-        const category = await Category.findOne({ name: categoryName });
-        if (!category) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Category not found' 
-            });
-        }
-
-        // Find the subcategory by name within the found category
-        const subCategory = await SubCategory.findOne({ 
-            name: subCategoryName, 
-            _id: { $in: category.subCategories } 
-        });
-
-        if (!subCategory) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'SubCategory not found under the specified category' 
-            });
-        }
-
-        // Check if a sub-subcategory with the same name already exists
-        const existingSubSubCategory = await SubSubCategory.findOne({ name });
-        if (existingSubSubCategory) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'SubSubCategory with this name already exists' 
-            });
-        }
-
-        // Create the new sub-subcategory
-        const subSubCategory = new SubSubCategory({ name });
-        await subSubCategory.save();
-
-        // Add the new SubSubCategory to the SubCategory
-        subCategory.subSubCategories.push(subSubCategory._id);
-        await subCategory.save();
-
-        res.status(201).json({ success: true, subSubCategory });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
 router.delete('/deletesubsubcategory/:name', async (req, res) => {
     try {
         const { name } = req.params;

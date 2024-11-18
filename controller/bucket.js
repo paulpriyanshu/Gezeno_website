@@ -12,7 +12,7 @@ const s3Client = new S3Client({
         secretAccessKey: process.env.SECRET_ACCESS_KEY
     }
 });
-console.log("this is s3 client", s3Client.config);
+// console.log("this is s3 client", s3Client.config);
 
 // Define a function to generate a unique filename using Date.now()
 const generateUniqueFilename = (originalName) => {

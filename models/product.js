@@ -175,9 +175,21 @@ const brandSchema = new mongoose.Schema({
 const Brand = mongoose.model('Brand', brandSchema);
 
 // Home Schema
-const carouselSchema = new mongoose.Schema({
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: true }
-  }, { timestamps: true });
+const carouselSchema = new mongoose.Schema(
+  {
+    categoryId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true, 
+      refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+    },
+    categoryType: { 
+      type: String, 
+      required: true, 
+      enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory'] // Allowed schemas
+    }
+  }, 
+  { timestamps: true }
+);
   
 const Carousel = mongoose.model('Carousel', carouselSchema);
 
@@ -205,10 +217,21 @@ const FourthCarousel = mongoose.model('FourthCarousel', fourthcarouselSchema);
   }, { timestamps: true });
 const Banner = mongoose.model('Banner', bannerSchema);
   
-const customSectionSchema = new mongoose.Schema({
-    sectionName: { type: String, required: true },
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory' } // Optional: Can be null if no category is associated
-  }, { timestamps: true });
+const customSectionSchema = new mongoose.Schema(
+  {
+    categoryId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true, 
+      refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+    },
+    categoryType: { 
+      type: String, 
+      required: true, 
+      enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+    }
+  }, 
+  { timestamps: true }
+);
   
   const CustomSection = mongoose.model('CustomSection', customSectionSchema);
 
