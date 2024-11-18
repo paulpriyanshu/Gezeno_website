@@ -131,11 +131,44 @@ router.post('/carousel', async (req, res) => {
   router.post('/ourbestpicks', async (req, res) => {
     try {
       const { categoryId } = req.body;
-      const newCarousel = new OurBestPicks({ categoryId });
+  
+      // Initialize variable to determine the collection type
+      let categoryType = null;
+  
+      // List of collections to check dynamically
+      const collections = [
+        { model: ParentCategory, type: 'ParentCategory' },
+        { model: SubCategory, type: 'SubCategory' },
+        { model: SubSubCategory, type: 'SubSubCategory' },
+        { model: SubSubSubCategory, type: 'SubSubSubCategory' },
+      ];
+  
+      // Iterate over collections and determine the categoryType
+      for (const collection of collections) {
+        const category = await collection.model.findById(categoryId);
+        if (category) {
+          categoryType = collection.type;
+          break;
+        }
+      }
+  
+      // Handle case where category is not found
+      if (!categoryType) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+  
+      // Create a new ourbestpicks entry and assign the categoryId and type
+      const newCarousel = new OurBestPicks({
+        categoryId,
+        categoryType,
+      });
+  
+      // Save the new carousel to the database
       await newCarousel.save();
-      res.status(201).json({ message: 'Carousel item added', data: newCarousel });
+  
+      return res.status(201).json({ message: 'Carousel item added', data: newCarousel });
     } catch (error) {
-      res.status(500).json({ message: 'An error occurred', error: error.message });
+      return res.status(500).json({ message: 'An error occurred', error: error.message });
     }
   });
   router.post('/ourbestpicks/:id', async (req, res) => {
@@ -155,13 +188,47 @@ router.post('/carousel', async (req, res) => {
   router.post('/toohottobemissed', async (req, res) => {
     try {
       const { categoryId } = req.body;
-      const newCarousel = new TooHotToBeMissed({ categoryId });
+  
+      // Initialize variable to determine the collection type
+      let categoryType = null;
+  
+      // List of collections to check dynamically
+      const collections = [
+        { model: ParentCategory, type: 'ParentCategory' },
+        { model: SubCategory, type: 'SubCategory' },
+        { model: SubSubCategory, type: 'SubSubCategory' },
+        { model: SubSubSubCategory, type: 'SubSubSubCategory' },
+      ];
+  
+      // Iterate over collections and determine the categoryType
+      for (const collection of collections) {
+        const category = await collection.model.findById(categoryId);
+        if (category) {
+          categoryType = collection.type;
+          break;
+        }
+      }
+  
+      // Handle case where category is not found
+      if (!categoryType) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+  
+      // Create a new TooHotToBeMissed entry and assign the categoryId and type
+      const newCarousel = new TooHotToBeMissed({
+        categoryId,
+        categoryType,
+      });
+  
+      // Save the new carousel to the database
       await newCarousel.save();
-      res.status(201).json({ message: 'Carousel item added', data: newCarousel });
+  
+      return res.status(201).json({ message: 'Carousel item added', data: newCarousel });
     } catch (error) {
-      res.status(500).json({ message: 'An error occurred', error: error.message });
+      return res.status(500).json({ message: 'An error occurred', error: error.message });
     }
   });
+  
   router.post('/toohottobemissed/:id', async (req, res) => {
     try {
       const { id } = req.params;
@@ -179,11 +246,44 @@ router.post('/carousel', async (req, res) => {
   router.post('/gezenooriginals', async (req, res) => {
     try {
       const { categoryId } = req.body;
-      const newCarousel = new GezenoOriginals({ categoryId });
+  
+      // Initialize variable to determine the collection type
+      let categoryType = null;
+  
+      // List of collections to check dynamically
+      const collections = [
+        { model: ParentCategory, type: 'ParentCategory' },
+        { model: SubCategory, type: 'SubCategory' },
+        { model: SubSubCategory, type: 'SubSubCategory' },
+        { model: SubSubSubCategory, type: 'SubSubSubCategory' },
+      ];
+  
+      // Iterate over collections and determine the categoryType
+      for (const collection of collections) {
+        const category = await collection.model.findById(categoryId);
+        if (category) {
+          categoryType = collection.type;
+          break;
+        }
+      }
+  
+      // Handle case where category is not found
+      if (!categoryType) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+  
+      // Create a new GezenoOriginals entry and assign the categoryId and type
+      const newCarousel = new GezenoOriginals({
+        categoryId,
+        categoryType,
+      });
+  
+      // Save the new carousel to the database
       await newCarousel.save();
-      res.status(201).json({ message: 'Carousel item added', data: newCarousel });
+  
+      return res.status(201).json({ message: 'Carousel item added', data: newCarousel });
     } catch (error) {
-      res.status(500).json({ message: 'An error occurred', error: error.message });
+      return res.status(500).json({ message: 'An error occurred', error: error.message });
     }
   });
   router.post('/gezenooriginals/:id', async (req, res) => {
@@ -203,11 +303,44 @@ router.post('/carousel', async (req, res) => {
   router.post('/widgets', async (req, res) => {
     try {
       const { categoryId } = req.body;
-      const newCarousel = new Widgets({ categoryId });
+  
+      // Initialize variable to determine the collection type
+      let categoryType = null;
+  
+      // List of collections to check dynamically
+      const collections = [
+        { model: ParentCategory, type: 'ParentCategory' },
+        { model: SubCategory, type: 'SubCategory' },
+        { model: SubSubCategory, type: 'SubSubCategory' },
+        { model: SubSubSubCategory, type: 'SubSubSubCategory' },
+      ];
+  
+      // Iterate over collections and determine the categoryType
+      for (const collection of collections) {
+        const category = await collection.model.findById(categoryId);
+        if (category) {
+          categoryType = collection.type;
+          break;
+        }
+      }
+  
+      // Handle case where category is not found
+      if (!categoryType) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+  
+      // Create a new Widgets entry and assign the categoryId and type
+      const newCarousel = new Widgets({
+        categoryId,
+        categoryType,
+      });
+  
+      // Save the new widgets item to the database
       await newCarousel.save();
-      res.status(201).json({ message: 'widgets item added', data: newCarousel });
+  
+      return res.status(201).json({ message: 'Widgets item added', data: newCarousel });
     } catch (error) {
-      res.status(500).json({ message: 'An error occurred', error: error.message });
+      return res.status(500).json({ message: 'An error occurred', error: error.message });
     }
   });
   router.post('/widgets/:id', async (req, res) => {
@@ -490,14 +623,14 @@ router.post('/custom-section/:id', async (req, res) => {
       };
   
       const populateCategoryData = async (item) => {
-        if (!item.categoryId) return null;
-        
-        const categoryData = await populateCategory(item.categoryId, item.categoryType);
-        if (!categoryData) return null;
+        if (!item.categoryId) {
+          return { ...item._doc, categoryData: null }; // Ensure the item is returned even if no category
+        }
   
+        const categoryData = await populateCategory(item.categoryId, item.categoryType);
         return {
           ...item._doc,
-          categoryData,
+          categoryData: categoryData || null,
         };
       };
   
@@ -511,18 +644,16 @@ router.post('/custom-section/:id', async (req, res) => {
         { key: 'ourBestPicks', model: OurBestPicks },
         { key: 'tooHotToBeMissed', model: TooHotToBeMissed },
         { key: 'gezenoOriginals', model: GezenoOriginals },
-        { key: 'widgets', model: Widgets }
+        { key: 'widgets', model: Widgets },
       ];
   
-      // Populate all sections
       const populatedSections = {};
       for (const section of sections) {
         const items = await section.model.find();
         const populatedItems = await Promise.all(
           items.map(populateCategoryData)
         );
-        // Filter out null values
-        populatedSections[section.key] = populatedItems.filter(item => item !== null);
+        populatedSections[section.key] = populatedItems; // Allow empty arrays without filtering
       }
   
       // Fetch and populate headers with full category details
@@ -541,13 +672,14 @@ router.post('/custom-section/:id', async (req, res) => {
       // Fetch banners
       const banners = await Banner.find();
   
+      // Respond with the full data
       res.status(200).json({
         message: 'Home configuration fetched successfully',
         data: {
           ...populatedSections,
           banners,
           headers: populatedHeaders
-        }
+        },
       });
     } catch (error) {
       res.status(500).json({ 

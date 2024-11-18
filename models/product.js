@@ -235,27 +235,69 @@ const customSectionSchema = new mongoose.Schema(
   
   const CustomSection = mongoose.model('CustomSection', customSectionSchema);
 
-const ourbestpicks = new mongoose.Schema({
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: true }
-  }, { timestamps: true });
+const ourbestpicks = new mongoose.Schema(
+  {
+    categoryId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true, 
+      refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+    },
+    categoryType: { 
+      type: String, 
+      required: true, 
+      enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+    }
+  }, 
+  { timestamps: true }
+);
   
 const OurBestPicks = mongoose.model('OurBestPicks', ourbestpicks);
 
-const toohottobemissed = new mongoose.Schema({
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: true }
-  }, { timestamps: true });
+const toohottobemissed = new mongoose.Schema( {
+  categoryId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    required: true, 
+    refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+  },
+  categoryType: { 
+    type: String, 
+    required: true, 
+    enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+  }
+}, 
+{ timestamps: true });
   
 const TooHotToBeMissed = mongoose.model('ToHotToBeMissed', toohottobemissed);
 
-const gezenooriginals = new mongoose.Schema({
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: true }
-  }, { timestamps: true });
+const gezenooriginals = new mongoose.Schema( {
+  categoryId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    required: true, 
+    refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+  },
+  categoryType: { 
+    type: String, 
+    required: true, 
+    enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+  }
+}, 
+{ timestamps: true });
   
 const GezenoOriginals = mongoose.model('GezenoOriginals', gezenooriginals);
 
-const widgets = new mongoose.Schema({
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: true }
-  }, { timestamps: true });
+const widgets = new mongoose.Schema( {
+  categoryId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    required: true, 
+    refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+  },
+  categoryType: { 
+    type: String, 
+    required: true, 
+    enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+  }
+}, 
+{ timestamps: true });
   
 const Widgets = mongoose.model('Widgets', widgets);
 
