@@ -172,19 +172,7 @@ const productVariantSchema = new mongoose.Schema({
             filename: { type: String, required: false }
         }
     ],
-    filters: [
-      {
-        filter: { 
-          type: mongoose.Schema.Types.ObjectId, 
-          ref: 'Filter', 
-          required: false 
-        }, // Reference to the filter (e.g., "Color")
-        tags: { 
-          type: [String], 
-          required: true 
-        } // Tags selected from the filter (e.g., ["Red", "Blue"])
-      }
-    ],
+    
     createdAt: { 
       type: Date, 
       default: Date.now 

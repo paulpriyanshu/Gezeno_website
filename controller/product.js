@@ -36,7 +36,10 @@ router.post('/createbrands', async (req, res) => {
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
+
 });
+
+
 router.post('/updateBrand/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1193,6 +1196,52 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
       return res.status(200).json(variant);
     } catch (error) {
       console.error('Error fetching product variant:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  });
+  router.delete('/delete-product-variant/:variantId', async (req, res) => {
+    try {
+      const { variantId } = req.params;
+  
+      // Find the variant by ID
+      const variant = await ProductVariant.findById(variantId);
+  
+      // If the variant does not exist, return a 404 error
+      if (!variant) {
+        return res.status(404).json({ message: 'Product variant not found' });
+      }
+  
+      // Delete the variant from the database
+      await variant.delete();
+  
+      // Return a success message
+      return res.status(200).json({ message: 'Product variant deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting product variant:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  });
+  router.get('/get-product-variants/:productId', async (req, res) => {
+    try {
+      const { productId } = req.params;
+  
+      // Find variants by productId 
+      const variants = await ProductVariant.find({ productId })
+        .populate('productId', 'name')  // Populate product details, e.g., product name
+
+  
+      // If no variants are found for the product, return a 404 error
+      if (variants.length === 0) {
+        return res.status(404).json({ message: 'No variants found for this product' });
+      }
+  
+      // Return the variants data
+      return res.status(200).json({
+        success: true,
+        data: variants,
+      });
+    } catch (error) {
+      console.error('Error fetching product variants:', error);
       return res.status(500).json({ message: 'Server error' });
     }
   });
