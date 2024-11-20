@@ -7,7 +7,7 @@ const {  Brand,
     SubSubSubCategory,
     SubSubSubSubCategory,
     Product,
-    ProductVariant,Carousel,CustomSection} = require('../models/product')
+    ProductVariant,Carousel,CustomSection,Filter} = require('../models/product')
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -202,137 +202,257 @@ router.get('/categories', async (req, res) => {
     }
 });
 router.post('/createProduct', async (req, res) => {
-    try {
-      const {
-        name,
-        description,
-        shortDetails,
-        productSpecs,
-        ratings,
-        metatitle,
-        metakeyword,
-        metadescription,
-        metascript,
-        price,
-        discountedPrice,
-        category,
-        subCategory,
-        subSubCategory,
-        subSubSubCategory,
-        subSubSubSubCategory,
-        brand,
-        variants,
-        images,
-        rating,
-        numOfReviews,
-        reviews,
-        stock,
-        isActive
-      } = req.body;
-  
-      // Validate required fields
-      if (!name || !price || !description) {
-        return res.status(400).json({
-          success: false,
-          message: "Please provide name, price and description"
-        });
-      }
-  
-      // Helper function to safely convert to ObjectId array
-      const toObjectIdArray = (value) => {
-        if (Array.isArray(value)) {
-          return value.map(id => new mongoose.Types.ObjectId(id));
-        } else if (value) {
-          return [new mongoose.Types.ObjectId(value)];
-        }
-        return [];
-      };
-  
-      // Create product object with validated data
-      const productData = {
-        name,
-        description,
-        price,
-        stock: stock || 0,
-        isActive: isActive ?? true, // Use nullish coalescing to default to true
-        
-        // Optional fields with defaults
-        shortDetails: shortDetails || '',
-        productSpecs: productSpecs || '',
-        ratings: ratings || 0,
-        metatitle: metatitle || '',
-        metakeyword: metakeyword || '',
-        metadescription: metadescription || '',
-        metascript: metascript || '',
-        discountedPrice: discountedPrice || null,
-        rating: rating || 0,
-        numOfReviews: numOfReviews || 0,
-  
-        // Convert ObjectId fields if they exist
-        category: category ? new mongoose.Types.ObjectId(category) : null,
-        brand: brand ? new mongoose.Types.ObjectId(brand) : null,
-  
-        // Handle array of ObjectIds
-        subCategory: toObjectIdArray(subCategory),
-        subSubCategory: toObjectIdArray(subSubCategory),
-        subSubSubCategory: toObjectIdArray(subSubSubCategory),
-        subSubSubSubCategory: toObjectIdArray(subSubSubSubCategory),
-        variants: toObjectIdArray(variants),
-  
-        // Handle images array
-        images: images || [],
-  
-        // Handle reviews array with proper ObjectId conversion
-        reviews: Array.isArray(reviews) ? reviews.map(review => ({
-          user: new mongoose.Types.ObjectId(review.user),
-          name: review.name,
-          rating: review.rating,
-          comment: review.comment,
-          createdAt: review.createdAt || Date.now()
-        })) : []
-      };
-  
-      // Create the product
-      const product = await Product.create(productData);
-  
-      // If product is successfully created
-      res.status(201).json({
-        success: true,
-        message: "Product created successfully",
-        product
-      });
-  
-    } catch (error) {
-      console.error('Error in createProduct:', error);
-      
-      // Handle specific MongoDB errors
-      if (error.name === 'ValidationError') {
-        return res.status(400).json({
-          success: false,
-          message: "Validation Error",
-          errors: Object.keys(error.errors).map(key => ({
-            field: key,
-            message: error.errors[key].message
-          }))
-        });
-      }
-  
-      // Handle general errors
-      res.status(500).json({
+  try {
+    const {
+      name,
+      description,
+      shortDetails,
+      productSpecs,
+      ratings,
+      metatitle,
+      metakeyword,
+      metadescription,
+      metascript,
+      price,
+      discountedPrice,
+      category,
+      subCategory,
+      subSubCategory,
+      subSubSubCategory,
+      subSubSubSubCategory,
+      brand,
+      variants,
+      images,
+      rating,
+      numOfReviews,
+      reviews,
+      stock,
+      filters,
+      isActive
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !price || !description) {
+      return res.status(400).json({
         success: false,
-        message: "Internal server error",
-        error: error.message
+        message: "Please provide name, price and description"
       });
     }
-  });
-router.get('/getProducts',async(req,res)=>{
+
+    // Check if filters exist and structure them properly
+    const processedFilters = filters && filters.filter && filters.tags ? {
+      filter: filters.filter,
+      tags: filters.tags || []
+    } : null;
+
+    // Helper function to safely convert to ObjectId array
+    const toObjectIdArray = (value) => {
+      if (Array.isArray(value)) {
+        return value.map(id => new mongoose.Types.ObjectId(id));
+      } else if (value) {
+        return [new mongoose.Types.ObjectId(value)];
+      }
+      return [];
+    };
+
+    // Create product object with validated data
+    const productData = {
+      name,
+      description,
+      price,
+      stock: stock || 0,
+      isActive: isActive ?? true, // Use nullish coalescing to default to true
+      
+      // Optional fields with defaults
+      shortDetails: shortDetails || '',
+      productSpecs: productSpecs || '',
+      ratings: ratings || 0,
+      metatitle: metatitle || '',
+      metakeyword: metakeyword || '',
+      metadescription: metadescription || '',
+      metascript: metascript || '',
+      discountedPrice: discountedPrice || null,
+      rating: rating || 0,
+      numOfReviews: numOfReviews || 0,
+
+      // Convert ObjectId fields if they exist
+      category: category ? new mongoose.Types.ObjectId(category) : null,
+      brand: brand ? new mongoose.Types.ObjectId(brand) : null,
+
+      // Handle array of ObjectIds
+      subCategory: toObjectIdArray(subCategory),
+      subSubCategory: toObjectIdArray(subSubCategory),
+      subSubSubCategory: toObjectIdArray(subSubSubCategory),
+      subSubSubSubCategory: toObjectIdArray(subSubSubSubCategory),
+      variants: toObjectIdArray(variants),
+
+      // Handle images array
+      images: images || [],
+      filters: processedFilters,
+
+      // Handle reviews array with proper ObjectId conversion
+      reviews: Array.isArray(reviews) ? reviews.map(review => ({
+        user: new mongoose.Types.ObjectId(review.user),
+        name: review.name,
+        rating: review.rating,
+        comment: review.comment,
+        createdAt: review.createdAt || Date.now()
+      })) : []
+    };
+
+    // Create the product
+    const product = await Product.create(productData);
+
+    // If product is successfully created
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      product
+    });
+
+  } catch (error) {
+    console.error('Error in createProduct:', error);
+    
+    // Handle specific MongoDB errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: Object.keys(error.errors).map(key => ({
+          field: key,
+          message: error.errors[key].message
+        }))
+      });
+    }
+
+    // Handle general errors
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+});
+  router.get('/getProducts', async (req, res) => {
     try {
-        const products = await Product.find().populate(['category', 'subCategory', 'subSubCategory', 'brand','variants']);
+        const products = await Product.find()
+            .populate('category')
+            .populate('subCategory')
+            .populate('subSubCategory')
+            .populate('brand')
+            .populate('variants')
+            .populate({
+                path: 'filters.filter', // Populate the `filter` field inside the `filters` array
+                model: 'Filter', // Specify the model to populate
+                select: 'name tags' // Select only the `name` and `tags` fields
+            });
+
         res.status(200).json(products);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-})
+});
+router.get('/filters', async (req, res) => {
+  try {
+    const { id } = req.query; // Optional query parameter for filter ID
+
+    if (id) {
+      // Fetch a specific filter by ID
+      const filter = await Filter.findById(id); 
+      if (!filter) {
+        return res.status(404).json({
+          success: false,
+          message: 'Filter not found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Filter retrieved successfully',
+        filter
+      });
+    }
+
+    // Fetch all filters
+    const filters = await Filter.find();
+    res.status(200).json({
+      success: true,
+      message: 'Filters retrieved successfully',
+      filters
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+router.post('/filters', async (req, res) => {
+  try {
+    const { name, tags } = req.body;
+
+    const filter = new Filter({ name, tags });
+    await filter.save();
+
+    res.status(201).json({ success: true, message: 'Filter created successfully', filter });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+router.post('/editfilters/:id', async (req, res) => {
+  try {
+    const filterId = req.params.id;
+    const { name, tags, removeTags } = req.body;
+
+    // Fetch the existing filter
+    const existingFilter = await Filter.findById(filterId);
+
+    if (!existingFilter) {
+      return res.status(404).json({ success: false, message: 'Filter not found' });
+    }
+
+    // Update the filter name if provided
+    if (name) existingFilter.name = name;
+
+    // Remove tags if `removeTags` is provided
+    if (removeTags && Array.isArray(removeTags)) {
+      existingFilter.tags = existingFilter.tags.filter(tag => !removeTags.includes(tag));
+    }
+
+    // Add new tags if `tags` is provided
+    if (tags && Array.isArray(tags)) {
+      // Merge existing tags with new ones, ensuring no duplicates
+      const uniqueTags = Array.from(new Set([...existingFilter.tags, ...tags]));
+      existingFilter.tags = uniqueTags;
+    }
+
+    // Save the updated filter
+    const updatedFilter = await existingFilter.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Filter updated successfully',
+      filter: updatedFilter
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+router.post('/filters/:id', async (req, res) => {
+  try {
+    const filterId = req.params.id;
+
+    const deletedFilter = await Filter.findByIdAndDelete(filterId);
+
+    if (!deletedFilter) {
+      return res.status(404).json({ success: false, message: 'Filter not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Filter deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
 router.post('/createCategory',async(req,res)=>{
     try {
         const { name,description, image, parentCategory } = req.body;
@@ -1199,59 +1319,78 @@ router.get('/products/:id', async (req, res) => {
 
 
 router.post('/update-product/:productId', async (req, res) => {
-    const { productId } = req.params;
-    const updateData = req.body;
+  const { productId } = req.params;
+  const updateData = req.body;
 
-    try {
-        // Convert brand name to ObjectId if provided
-        if (updateData.brand) {
-            const brandDoc = await Brand.findById(updateData.brand);
-            if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
-            updateData.brand = brandDoc._id;
-        }
+  try {
+      // Convert brand name to ObjectId if provided
+      if (updateData.brand) {
+          const brandDoc = await Brand.findById(updateData.brand);
+          if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
+          updateData.brand = brandDoc._id;
+      }
 
-        // Convert category name to ObjectId if provided
-        if (updateData.category) {
-            const categoryDoc = await ParentCategory.findById( updateData.category);
-            if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
-            updateData.category = categoryDoc._id;
-        }
+      // Convert category name to ObjectId if provided
+      if (updateData.category) {
+          const categoryDoc = await ParentCategory.findById(updateData.category);
+          if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
+          updateData.category = categoryDoc._id;
+      }
 
-        // Convert subCategory name to ObjectId if provided
-        if (updateData.subCategory) {
-            const subCategoryDoc = await SubCategory.findById(updateData.subCategory);
-            if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
-            updateData.subCategory = subCategoryDoc._id;
-        }
+      // Convert subCategory name to ObjectId if provided
+      if (updateData.subCategory) {
+          const subCategoryDoc = await SubCategory.findById(updateData.subCategory);
+          if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
+          updateData.subCategory = subCategoryDoc._id;
+      }
 
-        // Convert subSubCategory name to ObjectId if provided
-        if (updateData.subSubCategory) {
-            const subSubCategoryDoc = await SubSubCategory.findById( updateData.subSubCategory );
-            if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
-            updateData.subSubCategory = subSubCategoryDoc._id;
-        }
-        if (updateData.subSubSubCategory) {
-            const subSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory );
-            if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
-            updateData.subSubCategory = subSubCategoryDoc._id;
-        }
+      // Convert subSubCategory name to ObjectId if provided
+      if (updateData.subSubCategory) {
+          const subSubCategoryDoc = await SubSubCategory.findById(updateData.subSubCategory);
+          if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
+          updateData.subSubCategory = subSubCategoryDoc._id;
+      }
 
+      // Convert subSubSubCategory name to ObjectId if provided
+      if (updateData.subSubSubCategory) {
+          const subSubSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory);
+          if (!subSubSubCategoryDoc) return res.status(404).json({ message: "SubSubSubCategory not found" });
+          updateData.subSubSubCategory = subSubSubCategoryDoc._id;
+      }
 
-        // Exclude updatedAt field from updateData if it exists
-        delete updateData.updatedAt;
+      // Handle filter update (filters should now be a single object, not an array)
+      if (updateData.filters) {
+          const { filter: filterId, tags } = updateData.filters;
 
-        // Update the product
-        const product = await Product.findByIdAndUpdate(productId, updateData, { new: true, runValidators: true })
-            .populate('brand', 'name') // Only select the 'name' field of the brand
-            .populate('category', 'name'); // Only select the 'name' field of the category
+          // Validate filter existence
+          const filterDoc = await Filter.findById(filterId);
+          if (!filterDoc) return res.status(404).json({ message: `Filter with ID ${filterId} not found` });
 
-        if (!product) return res.status(404).json({ message: "Product not found" });
+          // Update the filters field with the filter and tags
+          updateData.filters = { filter: filterDoc._id, tags };
+      } else {
+          return res.status(400).json({ message: "Filters object is required" });
+      }
 
-        res.status(200).json({ message: "Product updated successfully", product });
-    } catch (error) {
-        console.error("Error updating product:", error.message);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+      // Exclude updatedAt field from updateData if it exists
+      delete updateData.updatedAt;
+
+      // Update the product
+      const product = await Product.findByIdAndUpdate(productId, updateData, { 
+          new: true, 
+          runValidators: true 
+      })
+          .populate('brand', 'name') // Only select the 'name' field of the brand
+          .populate('category', 'name') // Only select the 'name' field of the category
+          .populate('filters.filter', 'name'); // Populate filter details
+
+      if (!product) return res.status(404).json({ message: "Product not found" });
+
+      res.status(200).json({ message: "Product updated successfully", product });
+  } catch (error) {
+      console.error("Error updating product:", error.message);
+      res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
 });
 
 //delete product

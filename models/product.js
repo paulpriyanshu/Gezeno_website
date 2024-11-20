@@ -121,6 +121,23 @@ metakeyword:{
   ],
   rating: { type: Number, default: 0 },
   numOfReviews: { type: Number, default: 0 },
+  filters: 
+    {
+      filter: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Filter', 
+        required: false 
+      }, // Reference to the filter (e.g., "Color")
+      tags: { 
+        type: [String], 
+        required: true 
+      } // Tags selected from the filter (e.g., ["Red", "Blue"])
+    }
+  ,
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
   reviews: [
     {
       user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
@@ -155,12 +172,39 @@ const productVariantSchema = new mongoose.Schema({
             filename: { type: String, required: false }
         }
     ],
+    filters: [
+      {
+        filter: { 
+          type: mongoose.Schema.Types.ObjectId, 
+          ref: 'Filter', 
+          required: false 
+        }, // Reference to the filter (e.g., "Color")
+        tags: { 
+          type: [String], 
+          required: true 
+        } // Tags selected from the filter (e.g., ["Red", "Blue"])
+      }
+    ],
+    createdAt: { 
+      type: Date, 
+      default: Date.now 
+    },
     availableStock: { type: Number, default: 0 }, // New field for available stock
     maxQtyPerOrder: { type: Number, default: 5 }, // New field for max quantity per order
     customFields: { type: Map, of: String }, // Optional custom fields
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
+const filterSchema = new mongoose.Schema({
+  name: { type: String, required: true},
+  tags: { type: [String], default: [] },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Filter = mongoose.model('Filter', filterSchema);
+
+module.exports = Filter;
 
 const ProductVariant=mongoose.model('ProductVariant', productVariantSchema);
 // Brand Schema
@@ -332,6 +376,7 @@ module.exports = {
   OurBestPicks,
   TooHotToBeMissed,
   GezenoOriginals,
-  Widgets
+  Widgets,
+  Filter
 
 };
