@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Carousel,Banner,CustomSection,Header, SecondaryCarousel,SubCategory,SubSubCategory,SubSubSubCategory,SubSubSubSubCategory, ThirdCarousel, FourthCarousel, OurBestPicks, TooHotToBeMissed, GezenoOriginals, Widgets,ParentCategory } = require('../models/product'); // Ensure to import your models
+const { Carousel,Banner,CustomSection,Header, SecondaryCarousel,SubMenu,SubCategory,SubSubCategory,SubSubSubCategory,SubSubSubSubCategory, ThirdCarousel, FourthCarousel, OurBestPicks, TooHotToBeMissed, GezenoOriginals, Widgets,ParentCategory } = require('../models/product'); // Ensure to import your models
 const { populate } = require('../models/users');
 const mongoose=require('mongoose')
 
@@ -711,6 +711,148 @@ router.post('/custom-section/:id', async (req, res) => {
       res.json({ message: 'Header deleted successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+  router.get('/submenu', async (req, res) => {
+    try {
+      // Fetch submenu items
+      const submenuItems = await SubMenu.find();
+  
+      // If no items found
+      if (!submenuItems.length) {
+        return res.status(404).json({ message: 'No submenu items found' });
+      }
+  
+      // Define models mapping
+      const models = {
+        ParentCategory: ParentCategory, // Replace with actual Mongoose model
+        SubCategory: SubCategory,
+        SubSubCategory: SubSubCategory,
+        SubSubSubCategory: SubSubSubCategory,       // Replace with actual Mongoose model
+        // Add other models as needed
+      };
+  
+      // Populate categoryId based on categoryType
+      const populatedItems = await Promise.all(
+        submenuItems.map(async (item) => {
+          // Get the model dynamically
+          const Model = models[item.categoryType];
+          if (!Model) {
+            return {
+              ...item._doc,
+              categoryData: null, // Handle invalid categoryType
+            };
+          }
+  
+          // Populate category data
+          const categoryData = await Model.findById(item.categoryId).lean();
+          return {
+            ...item._doc,
+            categoryData: categoryData || null, // Ensure categoryData is null if not found
+          };
+        })
+      );
+  
+      res.status(200).json({ message: 'Submenu items retrieved', data: populatedItems });
+    } catch (error) {
+      res.status(500).json({ message: 'Error retrieving submenu items', error: error.message });
+    }
+  });
+  router.post('/submenu', async (req, res) => {
+    const { categoryId } = req.body;
+  
+    // Validate required fields    
+    if (!categoryId) {
+      return res.status(400).json({ message: "categoryId are required" });
+    }
+  
+    try {
+      let categoryType = null;
+  
+      // Identify the schema for the given categoryId
+      for (const [modelName, model] of Object.entries(models)) {
+        const exists = await model.exists({ _id: categoryId });
+        console.log("model eists",exists)
+        if (exists) {
+          categoryType = modelName;
+          break;
+        }
+      }
+  
+      // If no matching schema is found
+      if (!categoryType) {
+        return res.status(404).json({ message: "Invalid categoryId. No matching menu type found." });
+      }
+  
+      // Create and save the submenu item
+      const newSubMenuItem = new SubMenu({ categoryId, categoryType });
+      await newSubMenuItem.save();
+  
+      res.status(201).json({ message: 'SubMenu item added', data: newSubMenuItem });
+    } catch (error) {
+      res.status(500).json({ message: 'An error occurred', error: error.message });
+    }
+  });
+  router.post('/editsubmenu/:id', async (req, res) => {
+    const { id } = req.params; // ID of the SubMenu to be updated
+    const { categoryId } = req.body; // New categoryId from the request body
+  
+    // Validate required fields
+    if (!categoryId) {
+      return res.status(400).json({ message: "categoryId is required." });
+    }
+  
+    try {
+      // Fetch the existing SubMenu item
+      const subMenu = await SubMenu.findById(id);
+  
+      if (!subMenu) {
+        return res.status(404).json({ message: "SubMenu item not found." });
+      }
+  
+      // Identify the new categoryType for the given categoryId
+      let categoryType = null;
+      for (const [modelName, model] of Object.entries(models)) {
+        const exists = await model.exists({ _id: categoryId });
+        if (exists) {
+          categoryType = modelName;
+          break;
+        }
+      }
+  
+      // If no matching schema is found for the new categoryId
+      if (!categoryType) {
+        return res.status(404).json({ message: "Invalid categoryId. No matching menu type found." });
+      }
+  
+      // Update the SubMenu item
+      subMenu.categoryId = categoryId;
+      subMenu.categoryType = categoryType;
+  
+      // Save the updated SubMenu item
+      await subMenu.save();
+  
+      res.status(200).json({
+        message: "SubMenu item updated successfully.",
+        data: subMenu,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "An error occurred.", error: error.message });
+    }
+  });
+  router.post('/submenu/:id', async (req, res) => {
+    const { id } = req.params; // ID of the SubMenu to delete
+  
+    try {
+      const subMenu = await SubMenu.findByIdAndDelete(id);
+  
+      if (!subMenu) {
+        return res.status(404).json({ message: "SubMenu item not found." });
+      }
+  
+      res.status(200).json({ message: "SubMenu item deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "An error occurred", error: error.message });
     }
   });
   

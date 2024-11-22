@@ -285,6 +285,7 @@ const ourbestpicks = new mongoose.Schema(
   
 const OurBestPicks = mongoose.model('OurBestPicks', ourbestpicks);
 
+
 const toohottobemissed = new mongoose.Schema( {
   categoryId: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -343,6 +344,23 @@ const headerSchema = new mongoose.Schema({
   
 const Header = mongoose.model('Header', headerSchema);
   
+const subMenu = new mongoose.Schema(
+  {
+    categoryId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true, 
+      refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+    },
+    categoryType: { 
+      type: String, 
+      required: true, 
+      enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+    }
+  }, 
+  { timestamps: true }
+);
+  
+const SubMenu = mongoose.model('SubMenu', subMenu);
 
 
 module.exports = {
@@ -365,6 +383,7 @@ module.exports = {
   TooHotToBeMissed,
   GezenoOriginals,
   Widgets,
-  Filter
+  Filter,
+  SubMenu
 
 };

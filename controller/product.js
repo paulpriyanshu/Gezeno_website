@@ -913,6 +913,24 @@ router.post('/createSubSubCategory', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+router.get('/onlysubcategories/:id', async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      // Find the category by name and populate the subCategories array
+      const category = await SubCategory.findById(id).populate('subCategories');
+      
+      if (!category) {
+          return res.status(404).json({ success: false, message: 'Category not found' });
+      }
+
+      // Return the populated subCategories
+      res.status(200).json({ success: true, subCategories: category.subCategories });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 router.get('/getcategory/:categoryId', async (req, res) => {
   const { categoryId } = req.params;
 
