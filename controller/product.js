@@ -1217,20 +1217,18 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
       return res.status(500).json({ message: 'Server error' });
     }
   });
-  router.delete('/delete-product-variant/:variantId', async (req, res) => {
+  router.post('/delete-product-variant/:variantId', async (req, res) => {
     try {
       const { variantId } = req.params;
   
       // Find the variant by ID
-      const variant = await ProductVariant.findById(variantId);
+      const variant = await ProductVariant.findByIdAndDelete(variantId);
   
       // If the variant does not exist, return a 404 error
       if (!variant) {
         return res.status(404).json({ message: 'Product variant not found' });
       }
   
-      // Delete the variant from the database
-      await variant.delete();
   
       // Return a success message
       return res.status(200).json({ message: 'Product variant deleted successfully' });
@@ -1250,7 +1248,7 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
   
       // If no variants are found for the product, return a 404 error
       if (variants.length === 0) {
-        return res.status(404).json({ message: 'No variants found for this product' });
+        return res.status(200).json({ message: 'No variants found for this product' });
       }
   
       // Return the variants data
