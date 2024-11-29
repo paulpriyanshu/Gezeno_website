@@ -7,7 +7,7 @@ const {  Brand,
     SubSubSubCategory,
     SubSubSubSubCategory,
     Product,
-    ProductVariant,Carousel,CustomSection,Filter} = require('../models/product')
+    ProductVariant,Carousel,CustomSection,Filter,Size} = require('../models/product')
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -231,20 +231,21 @@ router.post('/createProduct', async (req, res) => {
       reviews,
       stock,
       filters,
-      isActive
+      isActive,
+      sizes  // New field for sizes
     } = req.body;
 
     // Validate required fields
     if (!name || !price || !description) {
       return res.status(400).json({
         success: false,
-        message: "Please provide name, price and description"
+        message: "Please provide name, price, and description"
       });
     }
 
     // Check if filters exist and structure them properly
-    const processedFilters = filters && filters.filter && filters.tags ? {
-      filter: filters.filter,
+    const processedFilters = filters ? {
+      filter: filters.filter || '',
       tags: filters.tags || []
     } : null;
 
@@ -258,6 +259,19 @@ router.post('/createProduct', async (req, res) => {
       return [];
     };
 
+    // Helper function to process sizes input
+    console.log("these are the sizes",sizes)
+    const processSizes = sizes? {
+         size: sizes.size || '',  // Extracts the size ID
+         tags: sizes.tags || [],  // Extracts the tags or defaults to an empty array
+       
+     
+    }:null
+    
+    // Example usage
+    // const size = { size: '67484a8811740ba5a8046434', tags: ['XL', 'L'] };
+    
+    // console.log(processSize(size));
     // Create product object with validated data
     const productData = {
       name,
@@ -291,7 +305,7 @@ router.post('/createProduct', async (req, res) => {
 
       // Handle images array
       images: images || [],
-      filters: processedFilters,
+      filters: processedFilters, // Assign processed filters (null if not provided)
 
       // Handle reviews array with proper ObjectId conversion
       reviews: Array.isArray(reviews) ? reviews.map(review => ({
@@ -300,7 +314,10 @@ router.post('/createProduct', async (req, res) => {
         rating: review.rating,
         comment: review.comment,
         createdAt: review.createdAt || Date.now()
-      })) : []
+      })) : [],
+
+      // Add sizes field (process input sizes)
+      sizes: processSizes
     };
 
     // Create the product
@@ -348,7 +365,10 @@ router.post('/createProduct', async (req, res) => {
                 path: 'filters.filter', // Populate the `filter` field inside the `filters` array
                 model: 'Filter', // Specify the model to populate
                 select: 'name tags' // Select only the `name` and `tags` fields
-            });
+            }).populate({
+              path:'sizes.size',
+              model:'Size',
+            })
 
         res.status(200).json(products);
     } catch (error) {
@@ -402,6 +422,7 @@ router.post('/filters', async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 });
+
 router.post('/editfilters/:id', async (req, res) => {
   try {
     const filterId = req.params.id;
@@ -471,6 +492,133 @@ router.post('/createCategory',async(req,res)=>{
     }
 
 })
+router.post('/sizes', async (req, res) => {
+  try {
+    const { name, tags } = req.body; // Expecting 'name' and 'tags' from request body
+
+    // Create a new Size instance
+    const size = new Size({ name, tags });
+
+    // Save to the database
+    await size.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Size created successfully',
+      size,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+router.get('/sizes', async (req, res) => {
+  try {
+    // Fetch all sizes from the database
+    const sizes = await Size.find();
+
+    if (sizes.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: 'No sizes found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Sizes retrieved successfully',
+      sizes,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Get Size by ID API
+router.get('/sizes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch the size by its ID
+    const size = await Size.findById(id);
+
+    if (!size) {
+      return res.status(404).json({
+        success: false,
+        message: 'Size not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Size retrieved successfully',
+      size,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+// Update Size API
+router.post('/sizes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, tags } = req.body;
+
+    // Validate input: Check if tags is an array (if provided) or name is provided
+    if (!name && (!tags || !Array.isArray(tags))) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one field (name or tags) must be provided for updating.',
+      });
+    }
+
+    // Find the size by ID
+    const size = await Size.findById(id);
+
+    if (!size) {
+      return res.status(404).json({
+        success: false,
+        message: 'Size not found.',
+      });
+    }
+
+    // Replace the entire tags array if provided
+    if (tags && Array.isArray(tags)) {
+      size.tags = tags; // Replace with the new tags array
+    }
+
+    // Update the name if provided
+    if (name) {
+      size.name = name;
+    }
+
+    // Update the timestamp
+    size.updatedAt = Date.now();
+
+    // Save the updated size
+    await size.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Size updated successfully with new tags.',
+      size,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 router.get('/getCategories', async (req, res) => {
     try {
       const categories = await ParentCategory.find()
@@ -1386,75 +1534,138 @@ router.get('/products/:id', async (req, res) => {
 router.post('/update-product/:productId', async (req, res) => {
   const { productId } = req.params;
   const updateData = req.body;
+  const { variants } = updateData; // Extract variants from the update data
+  console.log("this is updatedata of product", updateData);
 
   try {
-      // Convert brand name to ObjectId if provided
-      if (updateData.brand) {
-          const brandDoc = await Brand.findById(updateData.brand);
-          if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
-          updateData.brand = brandDoc._id;
+    // Convert brand name to ObjectId if provided
+    if (updateData.brand && updateData.brand.trim() !== "") {
+      const brandDoc = await Brand.findById(updateData.brand);
+      if (!brandDoc) return res.status(404).json({ message: "Brand not found" });
+      updateData.brand = brandDoc._id;
+    } else {
+      updateData.brand = null; // Ensure brand is set to null if it's not provided or empty
+    }
+
+    // Convert category name to ObjectId if provided
+    if (updateData.category) {
+      const categoryDoc = await ParentCategory.findById(updateData.category);
+      if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
+      updateData.category = categoryDoc._id;
+    }
+
+    // Convert subCategory name to ObjectId if provided
+    if (updateData.subCategory) {
+      const subCategoryDoc = await SubCategory.findById(updateData.subCategory);
+      if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
+      updateData.subCategory = subCategoryDoc._id;
+    }
+
+    // Convert subSubCategory name to ObjectId if provided
+    if (updateData.subSubCategory) {
+      const subSubCategoryDoc = await SubSubCategory.findById(updateData.subSubCategory);
+      if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
+      updateData.subSubCategory = subSubCategoryDoc._id;
+    }
+
+    // Convert subSubSubCategory name to ObjectId if provided
+    if (updateData.subSubSubCategory) {
+      const subSubSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory);
+      if (!subSubSubCategoryDoc) return res.status(404).json({ message: "SubSubSubCategory not found" });
+      updateData.subSubSubCategory = subSubSubCategoryDoc._id;
+    }
+
+    // Handle filter update
+    if (updateData.filters?.tags?.length > 0) {
+      const { filter: filterId, tags } = updateData.filters;
+
+      // Validate filter existence
+      const filterDoc = await Filter.findById(filterId);
+      if (!filterDoc) return res.status(404).json({ message: `Filter with ID ${filterId} not found` });
+
+      // Update the filters field
+      updateData.filters = { filter: filterDoc._id, tags };
+    }
+
+    // Handle size update
+    if (updateData.sizes?.tags?.length > 0) {
+      const { size: sizeId, tags } = updateData.sizes;
+
+      // Validate size existence
+      const sizeDoc = await Size.findById(sizeId);
+      if (!sizeDoc) return res.status(404).json({ message: `Size with ID ${sizeId} not found` });
+
+      // Update the sizes field
+      updateData.sizes = { size: sizeDoc._id, tags };
+    }
+
+    // Handle new variants
+    if (variants?.length > 0) {
+      const newVariants = [];
+      for (const variant of variants) {
+        const {
+          variantName,
+          variantPrice,
+          sizes,
+          images,
+          availableStock,
+          maxQtyPerOrder,
+          productSellingPrice,
+          customFields,
+        } = variant;
+
+        // Validate required fields for each variant
+        // if (!variantName || variantPrice == null || productSellingPrice == null) {
+        //   return res
+        //     .status(400)
+        //     .json({ message: "Variant name, variant price, and product selling price are required for all variants." });
+        // }
+
+        // Create the new variant
+        const newVariant = new ProductVariant({
+          productId,
+          variantName,
+          variantPrice,
+          sizes: sizes || [],
+          images: images || [],
+          availableStock: availableStock || 0,
+          maxQtyPerOrder: maxQtyPerOrder || 5,
+          productSellingPrice,
+          customFields: customFields || {},
+        });
+
+        const savedVariant = await newVariant.save();
+        newVariants.push(savedVariant);
       }
 
-      // Convert category name to ObjectId if provided
-      if (updateData.category) {
-          const categoryDoc = await ParentCategory.findById(updateData.category);
-          if (!categoryDoc) return res.status(404).json({ message: "Category not found" });
-          updateData.category = categoryDoc._id;
-      }
+      // Add new variant IDs to the product's variant list
+      const existingProduct = await Product.findById(productId);
+      if (!existingProduct) return res.status(404).json({ message: "Product not found" });
 
-      // Convert subCategory name to ObjectId if provided
-      if (updateData.subCategory) {
-          const subCategoryDoc = await SubCategory.findById(updateData.subCategory);
-          if (!subCategoryDoc) return res.status(404).json({ message: "SubCategory not found" });
-          updateData.subCategory = subCategoryDoc._id;
-      }
+      existingProduct.variants.push(...newVariants.map((v) => v._id));
+      await existingProduct.save();
+    }
 
-      // Convert subSubCategory name to ObjectId if provided
-      if (updateData.subSubCategory) {
-          const subSubCategoryDoc = await SubSubCategory.findById(updateData.subSubCategory);
-          if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
-          updateData.subSubCategory = subSubCategoryDoc._id;
-      }
+    // Exclude updatedAt field from updateData if it exists
+    delete updateData.updatedAt;
 
-      // Convert subSubSubCategory name to ObjectId if provided
-      if (updateData.subSubSubCategory) {
-          const subSubSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory);
-          if (!subSubSubCategoryDoc) return res.status(404).json({ message: "SubSubSubCategory not found" });
-          updateData.subSubSubCategory = subSubSubCategoryDoc._id;
-      }
+    // Update the product
+    const product = await Product.findByIdAndUpdate(productId, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("brand", "name") // Only select the 'name' field of the brand
+      .populate("category", "name") // Only select the 'name' field of the category
+      .populate("filters.filter", "name")
+      .populate("sizes.size", "name")
+      .populate("variants", "variantName variantPrice sizes images");
 
-      // Handle filter update (filters should now be a single object, not an array)
-      if (updateData.filters) {
-          const { filter: filterId, tags } = updateData.filters;
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-          // Validate filter existence
-          const filterDoc = await Filter.findById(filterId);
-          if (!filterDoc) return res.status(404).json({ message: `Filter with ID ${filterId} not found` });
-
-          // Update the filters field with the filter and tags
-          updateData.filters = { filter: filterDoc._id, tags };
-      } else {
-          return res.status(400).json({ message: "Filters object is required" });
-      }
-
-      // Exclude updatedAt field from updateData if it exists
-      delete updateData.updatedAt;
-
-      // Update the product
-      const product = await Product.findByIdAndUpdate(productId, updateData, { 
-          new: true, 
-          runValidators: true 
-      })
-          .populate('brand', 'name') // Only select the 'name' field of the brand
-          .populate('category', 'name') // Only select the 'name' field of the category
-          .populate('filters.filter', 'name'); // Populate filter details
-
-      if (!product) return res.status(404).json({ message: "Product not found" });
-
-      res.status(200).json({ message: "Product updated successfully", product });
+    res.status(200).json({ message: "Product updated successfully", product });
   } catch (error) {
-      console.error("Error updating product:", error.message);
-      res.status(500).json({ message: "Internal Server Error", error: error.message });
+    console.error("Error updating product:", error.message);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
 

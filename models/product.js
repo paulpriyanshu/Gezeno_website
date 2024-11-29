@@ -111,7 +111,7 @@ metakeyword:{
   subSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubCategory', required: false }],
   subSubSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubSubCategory', required: false }],
   subSubSubSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubSubSubCategory', required: false }],
-  brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: false },
+  brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: false},
   variants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant',required:false }],
   images: [
     {
@@ -130,13 +130,21 @@ metakeyword:{
       }, // Reference to the filter (e.g., "Color")
       tags: { 
         type: [String], 
-        required: true 
+        required: false
       } // Tags selected from the filter (e.g., ["Red", "Blue"])
     }
   ,
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  sizes: 
+  {
+    size: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Size', 
+      required: false 
+    }, 
+    tags: { 
+      type: [String], 
+      required: false
+    } // Tags selected from the filter (e.g., ["Red", "Blue"])
   },
   reviews: [
     {
@@ -193,6 +201,17 @@ const filterSchema = new mongoose.Schema({
 const Filter = mongoose.model('Filter', filterSchema);
 
 module.exports = Filter;
+
+const sizeSchema = new mongoose.Schema({
+  name: { type: String, required: true},
+  tags: { type: [String], default: [] },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Size = mongoose.model('Size', sizeSchema);
+
+module.exports = Size;
 
 const ProductVariant=mongoose.model('ProductVariant', productVariantSchema);
 // Brand Schema
@@ -384,6 +403,7 @@ module.exports = {
   GezenoOriginals,
   Widgets,
   Filter,
-  SubMenu
+  SubMenu,
+  Size
 
 };
