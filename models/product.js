@@ -169,17 +169,37 @@ const productVariantSchema = new mongoose.Schema({
     commingSoon: { type: Boolean, default: false },
     variantPrice: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
-    sizes: {
-        type: [String],
-        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '26', '28', '30'],
-        default: []
-    },
     images: [
         {
             url: { type: String, required: false },
             filename: { type: String, required: false }
         }
     ],
+    filters: 
+    {
+      filter: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Filter', 
+        required: false 
+      }, // Reference to the filter (e.g., "Color")
+      tags: { 
+        type: [String], 
+        required: false
+      } // Tags selected from the filter (e.g., ["Red", "Blue"])
+    }
+  ,
+  sizes: 
+  {
+    size: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Size', 
+      required: false 
+    }, 
+    tags: { 
+      type: [String], 
+      required: false
+    } // Tags selected from the filter (e.g., ["Red", "Blue"])
+  },
     
     createdAt: { 
       type: Date, 

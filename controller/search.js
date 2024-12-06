@@ -48,7 +48,7 @@ const client = new Client({
 //             }
 //         });
 
-//         console.log('Index created successfully!');
+//         //console.log('Index created successfully!');
 //     } catch (error) {
 //         console.error('Error creating index:', error);
 //     }
@@ -81,7 +81,7 @@ const client = new Client({
 //             }
 //         });
 
-//         console.log('New index created successfully!');
+//         //console.log('New index created successfully!');
 //     } catch (error) {
 //         console.error('Error creating new index:', error);
 //     }
@@ -102,7 +102,7 @@ const client = new Client({
 //             }
 //         });
 
-//         console.log('Data reindexed successfully!');
+//         //console.log('Data reindexed successfully!');
 //     } catch (error) {
 //         console.error('Error reindexing data:', error);
 //     }
@@ -119,9 +119,9 @@ async function indexProducts() {
 
 
         const products = await Product.find().populate('brand').populate('category').populate('subCategory').populate('subSubCategory').populate('brand');
-        console.log(products)
+        //console.log(products)
         for (const product of products) {
-            // console.log(product.category.name)
+            // //console.log(product.category.name)
             
             await client.index({
                 index: 'products_v2',
@@ -142,7 +142,7 @@ async function indexProducts() {
             });
         }
         
-        console.log('Products indexed successfully with suggest field!');
+        //console.log('Products indexed successfully with suggest field!');
     } catch (error) {
         console.error('Error indexing products:', error);
     }
@@ -160,7 +160,7 @@ router.post('/search/suggestion', async (req, res) => {
                 message: 'Search query is required.',
             });
         }
-        console.log(typeof query)
+        //console.log(typeof query)
 
 
         const  body  = await client.search({
@@ -180,7 +180,7 @@ router.post('/search/suggestion', async (req, res) => {
                 },
             },
         });
-        console.log(body.suggest.productSuggest[0].options);
+        //console.log(body.suggest.productSuggest[0].options);
         const suggestions = body.suggest?.productSuggest?.[0]?.options?.map(option => option.text) || [];;
 
         res.status(200).json({
@@ -314,15 +314,15 @@ router.post('/search', async (req, res) => {
             },
         });
          
-        console.log(body.hits.hits)
+        //console.log(body.hits.hits)
         const products = []
         for (let hit of body.hits.hits) {
             const product = hit._source;
             const productId = hit._id; 
             const products_data = await Product.findById(productId).populate('brand').populate('category').populate('variants')
             products.push(products_data)
-            console.log(productId, 'productid');
-            console.log(userid,"userid")
+            //console.log(productId, 'productid');
+            //console.log(userid,"userid")
             await MostSearch.findOneAndUpdate(
                 { productId: productId }, 
                 { $inc: { searchCount: 1 }, $set: { createdAt: new Date() } },

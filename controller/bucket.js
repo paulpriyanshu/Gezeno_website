@@ -12,7 +12,7 @@ const s3Client = new S3Client({
         secretAccessKey: process.env.SECRET_ACCESS_KEY
     }
 });
-// console.log("this is s3 client", s3Client.config);
+// //console.log("this is s3 client", s3Client.config);
 
 // Define a function to generate a unique filename using Date.now()
 const generateUniqueFilename = (originalName) => {
@@ -22,14 +22,14 @@ const generateUniqueFilename = (originalName) => {
 
 // Define a function to get a direct URL for an image
 const getImageUrl = (key) => {  
-    return `https://gezenobucket.s3.eu-north-1.amazonaws.com/${key}`;
+    return `https://gezeno.s3.eu-north-1.amazonaws.com/${key}`;
 };  
 
 // Define a function to get a signed URL for uploading an image
 const imageUpload = async (filename) => {
     const uniqueFilename = generateUniqueFilename(filename);
     const command = new PutObjectCommand({
-        Bucket: "gezenobucket",
+        Bucket: "gezeno",
         Key: `images/${uniqueFilename}`,
         ContentType: "image/jpeg"
     });
@@ -41,7 +41,7 @@ const imageUpload = async (filename) => {
 router.get('/imageUpload/:name', async (req, res) => {
     try {
         const { url, uniqueFilename } = await imageUpload(req.params.name);
-        console.log("URL to upload image:", url);
+        //console.log("URL to upload image:", url);
         res.json({ url, filename: uniqueFilename });
     } catch (error) {
         console.error("Error generating signed upload URL:", error);
@@ -53,7 +53,7 @@ router.get('/imageUpload/:name', async (req, res) => {
 router.get('/image/:name', async (req, res) => {
     try {
         const url = getImageUrl(`images/${req.params.name}`);
-        console.log("Direct URL is:", url);
+        //console.log("Direct URL is:", url);
         res.json({ url });
     } catch (error) {
         console.error("Error generating direct URL:", error);

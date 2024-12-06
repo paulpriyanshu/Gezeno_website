@@ -40,7 +40,7 @@ const router = express.Router()
 //       try {
 
 //         const userExists = await users.findOne({email});
-//         console.log(userExists)
+//         //console.log(userExists)
 //         if (userExists) {
 //           return res.status(400).json({ message: 'Email already exists' });
 //         }
@@ -69,7 +69,7 @@ router.post('/login-with-phone', async (req, res) => {
         if (user) {
             const mailid = user.email
             const otp = crypto.randomBytes(3).toString('hex');
-            console.log(otp);
+            //console.log(otp);
             user.otp.code = otpCode.toString();
             user.otp.createdAt = new Date();
             user.otp.attempts = 0;
@@ -97,7 +97,7 @@ router.post('/login-with-phone', async (req, res) => {
 
         const createuser = new users({ phone })
         await createuser.save()
-        // console.log(createuser.id)
+        // //console.log(createuser.id)
         return res.redirect(`/phone-number?userId=${createuser.id}`);
 
         // user = new users({
@@ -105,7 +105,7 @@ router.post('/login-with-phone', async (req, res) => {
         // });
         // await user.save();
         // const otp = crypto.randomBytes(3).toString('hex');
-        // console.log(otp);
+        // //console.log(otp);
         // await client.setEx(user._id.toString(), 300, otp);
 
         // const transporter = nodemailer.createTransport({
@@ -134,12 +134,12 @@ router.post('/login-with-phone', async (req, res) => {
 
 router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
-    console.log("entered the api")
-    console.log(req.body);
+    //console.log("entered the api")
+    //console.log(req.body);
 
     try {
         const user = await users.findOne({ email });
-        console.log(user)
+        //console.log(user)
         if (!user) {
             return res.json({ success: false, message: 'User not found' });
         }
@@ -167,7 +167,7 @@ router.post('/verify-otp', async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        console.log(token)
+        //console.log(token)
         // Send token and success message to frontend
         res.header('Authorization', `Bearer ${token}`).json({ success: true, message: 'Logged in', token });
 
@@ -188,7 +188,7 @@ router.get('/google/callback',
         //  JWT was passed in req.user.token
 
         const { user, token } = req.user;
-        // console.log(user,token)
+        // //console.log(user,token)
         if (!user.phone) {
             return res.redirect(`/phone-number?userId=${user._id}`);
         }
@@ -199,7 +199,7 @@ router.get('/google/callback',
 
 // router.post('/phone-number', async (req, res) => {
 //     const userId = req.query.userId
-//     console.log(userId)
+//     //console.log(userId)
 //     const { phone, email, fullName ,gender} = req.body;
 
 //     try {
@@ -227,7 +227,7 @@ router.get('/google/callback',
 
 //         const mailid = user.email
 //         const otp = crypto.randomBytes(3).toString('hex');
-//         console.log(otp);
+//         //console.log(otp);
 //         user.otp.code = otpCode.toString();
 //         user.otp.createdAt = new Date();
 //         user.otp.attempts = 0;
@@ -259,8 +259,8 @@ router.get('/google/callback',
 
 router.post('/phone-number', async (req, res) => {
     const { phone, email, fullName, gender } = req.body;
-    console.log("this is phone", phone);
-    console.log("this is email", email);
+    //console.log("this is phone", phone);
+    //console.log("this is email", email);
     try {
         let user = await users.findOne({ email });
         if (!user) {
@@ -281,7 +281,7 @@ router.post('/phone-number', async (req, res) => {
         const mailid = email;
         const otp = crypto.randomBytes(3).toString('hex');
 
-        console.log(otp);
+        //console.log(otp);
         const updatedUser = await users.findOneAndUpdate(
             { email: email }, // Filter by the user's _id or any other unique identifier
             {

@@ -49,7 +49,7 @@ async function validateCategoryRelationships() {
             .populate('subCategory')
             .populate('subSubCategory');
 
-        console.log('Product category hierarchy:', {
+        //console.log('Product category hierarchy:', {
             category: populatedProduct.category.name,
             subCategory: populatedProduct.subCategory.name,
             subSubCategory: populatedProduct.subSubCategory.name

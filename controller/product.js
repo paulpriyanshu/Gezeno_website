@@ -204,6 +204,148 @@ router.get('/categories', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+async function getCategoryById(id, populateSubCategories = true) {
+  // First, try to find the category in each schema (ParentCategory, SubCategory, etc.)
+  let category = await ParentCategory.findById(id).exec();
+  
+  if (category) {
+    if (populateSubCategories) {
+      category = await category.populate({
+        path: 'subCategories',
+        populate: {
+          path: 'subSubCategories',
+          populate: {
+            path: 'subSubSubCategories',
+            populate: {
+              path: 'subSubSubSubCategories'
+            }
+          }
+        }
+      });
+    }
+    return category;
+  }
+
+  category = await SubCategory.findById(id).exec();
+  if (category) {
+    if (populateSubCategories) {
+      category = await category.populate({
+        path: 'subSubCategories',
+        populate: {
+          path: 'subSubSubCategories',
+          populate: {
+            path: 'subSubSubSubCategories'
+          }
+        }
+      });
+    }
+    return category;
+  }
+
+  category = await SubSubCategory.findById(id).exec();
+  if (category) {
+    if (populateSubCategories) {
+      category = await category.populate({
+        path: 'subSubSubCategories',
+        populate: {
+          path: 'subSubSubSubCategories'
+        }
+      });
+    }
+    return category;
+  }
+
+  category = await SubSubSubCategory.findById(id).exec();
+  if (category) {
+    if (populateSubCategories) {
+      category = await category.populate({
+        path: 'subSubSubSubCategories'
+      });
+    }
+    return category;
+  }
+
+  category = await SubSubSubSubCategory.findById(id).exec();
+  if (category) {
+    return category; // No further subcategories to populate
+  }
+ 
+
+  return null; // Category not found in any collection
+}
+async function getProductsByCategory(categoryId) {
+  // Fetch the category details with subcategories populated
+  const category = await getCategoryById(categoryId);
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  // Helper function to recursively extract all nested category IDs
+  const extractCategoryIds = (cat) => {
+    const ids = [cat._id];
+    if (cat.subCategories) {
+      for (const sub of cat.subCategories) {
+        ids.push(...extractCategoryIds(sub));
+      }
+    }
+    return ids;
+  };
+
+  // Get all nested category IDs
+  const allCategoryIds = extractCategoryIds(category);
+
+  // Query products belonging to any of these categories
+  const products = await Product.find({
+    $or: [
+      { category: { $in: allCategoryIds } },
+      { subCategory: { $in: allCategoryIds } },
+      { subSubCategory: { $in: allCategoryIds } },
+      { subSubSubCategory: { $in: allCategoryIds } },
+      { subSubSubSubCategory: { $in: allCategoryIds } },
+    ],
+  })
+    .select('name brand price images filters sizes subCategory')
+    .populate('filters.filter', 'name') // Populate filter names
+    .populate('brand', 'name') // Populate brand names
+    .populate({
+      path: 'subCategory',
+      select: 'name description image subSubCategories',
+      populate: {
+        path: 'subSubCategories',
+        select: 'name description image subSubSubCategories',
+        populate: {
+          path: 'subSubSubCategories',
+          select: 'name description image subSubSubSubCategories',
+          populate: {
+            path: 'subSubSubSubCategories',
+            select: 'name description image',
+          },
+        },
+      },
+    })
+    .exec();
+
+  return { category, products };
+}
+// Endpoint to get a category by its ID
+router.get('/productOfCategory/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const category = await getCategoryById(id);
+    console.log("this is the category",category._id)
+
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    const products = await getProductsByCategory(category);
+
+    // Return only the filtered response
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching category', error: error.message });
+  }
+});
 router.post('/createProduct', async (req, res) => {
   try {
     const {
@@ -260,7 +402,7 @@ router.post('/createProduct', async (req, res) => {
     };
 
     // Helper function to process sizes input
-    console.log("these are the sizes",sizes)
+    //console.log("these are the sizes",sizes)
     const processSizes = sizes? {
          size: sizes.size || '',  // Extracts the size ID
          tags: sizes.tags || [],  // Extracts the tags or defaults to an empty array
@@ -271,7 +413,7 @@ router.post('/createProduct', async (req, res) => {
     // Example usage
     // const size = { size: '67484a8811740ba5a8046434', tags: ['XL', 'L'] };
     
-    // console.log(processSize(size));
+    // //console.log(processSize(size));
     // Create product object with validated data
     const productData = {
       name,
@@ -1236,61 +1378,83 @@ router.delete('/deletesubsubcategory/:name', async (req, res) => {
 });
 //craete product variant
 router.post('/create-product-variant', async (req, res) => {
-    try {
-        const {
-            productId,
-            variantName,
-            variantPrice,
-            sizes,
-            images,
-            customFields,
-            availableStock,
-            maxQtyPerOrder,
-            productSellingPrice
-        } = req.body;
+  try {
+      const {
+          productId,
+          variantName,
+          variantPrice,
+          sizes,
+          filters,
+          images,
+          customFields,
+          availableStock,
+          maxQtyPerOrder,
+          commingSoon,
+          isActive,
+      } = req.body;
 
-        // Validate required fields
-        if (!productId || !variantName || !variantPrice == null || productSellingPrice == null) {
-            return res.status(400).json({ message: 'productId, variant name, variant price, product MRP, and product selling price are required' });
-        }
+      // Validate required fields
+      if (!productId || !variantName || variantPrice == null) {
+          return res.status(400).json({
+              message: 'Product ID, variant name, and variant price are required',
+          });
+      }
 
-        // Check if the product exists
-        const existingProduct = await Product.findById(productId);
-        if (!existingProduct) {
-            return res.status(404).json({ message: 'Product not found' });
-        }
+      // Check if the product exists
+      const existingProduct = await Product.findById(productId);
+      if (!existingProduct) {
+          return res.status(404).json({ message: 'Product not found' });
+      }
 
-        // Create new variant with the new fields
-        const newVariant = new ProductVariant({
-            productId,
-            variantName,
-            variantPrice,
-            sizes: sizes || [],
-            images: images || [],
-            availableStock: availableStock || 0,
-            maxQtyPerOrder: maxQtyPerOrder || 5,
-            productSellingPrice,
-            customFields: customFields || {}
-        });
+      // Validate and set sizes
+      const formattedSizes = sizes?.size
+          ? {
+                size: sizes.size,
+                tags: Array.isArray(sizes.tags) ? sizes.tags : [],
+            }
+          : null;
 
-        // Save the new variant
-        const savedVariant = await newVariant.save();
+      // Validate and set filters
+      const formattedFilters = filters?.filter
+          ? {
+                filter: filters.filter,
+                tags: Array.isArray(filters.tags) ? filters.tags : [],
+            }
+          : null;
 
-        // Update the product with the new variant ID
-        if (!Array.isArray(existingProduct.variants)) {
-            existingProduct.variants = [];
-        }
-        existingProduct.variants.push(savedVariant._id);
-        await existingProduct.save();
+      // Create new variant with the new fields
+      const newVariant = new ProductVariant({
+          productId,
+          variantName,
+          variantPrice,
+          sizes: formattedSizes,
+          filters: formattedFilters,
+          images: images || [],
+          availableStock: availableStock || 0,
+          maxQtyPerOrder: maxQtyPerOrder || 5,
+          commingSoon: commingSoon || false,
+          isActive: isActive ?? true,
+          customFields: customFields || {},
+      });
 
-        return res.status(201).json({
-            message: 'Product variant created successfully',
-            variant: savedVariant
-        });
-    } catch (error) {
-        console.error('Error creating product variant:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
+      // Save the new variant
+      const savedVariant = await newVariant.save();
+
+      // Update the product with the new variant ID
+      if (!Array.isArray(existingProduct.variants)) {
+          existingProduct.variants = [];
+      }
+      existingProduct.variants.push(savedVariant._id);
+      await existingProduct.save();
+
+      return res.status(201).json({
+          message: 'Product variant created successfully',
+          variant: savedVariant,
+      });
+  } catch (error) {
+      console.error('Error creating product variant:', error);
+      return res.status(500).json({ message: 'Server error' });
+  }
 });
 // PUT /edit-product-variant/:variantId
 router.post('/edit-product-variant/:variantId', async (req, res) => {
@@ -1418,7 +1582,7 @@ router.post('/deleteproduct',async(req,res)=>{
         const data=await Product.deleteMany()
         res.send("deleted data")
     } catch (error) { 
-        console.log(error)
+        //console.log(error)
         res.send(error)
     } 
 })
@@ -1535,7 +1699,7 @@ router.post('/update-product/:productId', async (req, res) => {
   const { productId } = req.params;
   const updateData = req.body;
   const { variants } = updateData; // Extract variants from the update data
-  console.log("this is updatedata of product", updateData);
+  //console.log("this is updatedata of product", updateData);
 
   try {
     // Convert brand name to ObjectId if provided

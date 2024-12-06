@@ -43,11 +43,11 @@ app.use('/api/',cart)
 app.use('/api',search)
 app.use('/api/',image)
 
-console.log(process.env.EMAIL_USERNAME)
+//console.log(process.env.EMAIL_USERNAME)
 app.get('/getdata',(req,res)=>{
     res.json({msg:"hello"})
 })
 
 app.listen(port,()=>{
-    console.log('app is running',port)
+    //console.log('app is running',port)
 })

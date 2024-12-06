@@ -772,7 +772,7 @@ router.post('/custom-section/:id', async (req, res) => {
       // Identify the schema for the given categoryId
       for (const [modelName, model] of Object.entries(models)) {
         const exists = await model.exists({ _id: categoryId });
-        console.log("model eists",exists)
+        //console.log("model eists",exists)
         if (exists) {
           categoryType = modelName;
           break;
