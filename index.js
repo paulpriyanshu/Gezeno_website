@@ -6,34 +6,19 @@ const search = require('./controller/search')
 const limiter = require('./middleware/ratelimit')
 const connectdb = require('./libs/dbconnection');
 const passport = require('passport');
-<<<<<<< HEAD
-const cors=require('cors')
-=======
+
 const homepage=require('./controller/home')
 const image=require('./controller/bucket')
 const cors=require('cors')
 require('dotenv').config()
 
-
-
->>>>>>> d424fea620f31cfc66c56c5381d5fe96514c98ee
-// const swaggerUi = require('swagger-ui-express');
-// const swaggerJSDoc = require('swagger-jsdoc');
-// const swaggerSpec = require('./config/swaggerconf');
-const corsOptions = {
-    origin: '*', // Change this to your frontend's URL in production
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Allow cookies or authorization headers
-};
 const app = express()
 
 const port = 8080
 
-<<<<<<< HEAD
+
 connectdb()
 app.use(cors())
-=======
->>>>>>> d424fea620f31cfc66c56c5381d5fe96514c98ee
 
 connectdb()
 app.use(cors(corsOptions))
