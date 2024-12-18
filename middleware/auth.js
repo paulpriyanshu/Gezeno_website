@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken')
-const connectToRedis = require('../config/redisconnection');
 
 module.exports = async  function auth(req,res,next){
        let authheader = req.headers.Authorization || req.headers.authorization

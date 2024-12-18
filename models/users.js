@@ -21,59 +21,7 @@ const users = new mongoose.Schema({
         unique: true,
         maxLength: [200, "Your phone number cannot exceed 200 characters"],
     },
-    address:[ {
-        pincode: {
-            type: String,
-            required: false,
-            trim: true,
-            maxLength: 6
-        },
-        city: {
-            type: String,
-            required: false,
-            trim: true,
-            maxLength: 100 
-        },
-        state: {
-            type: String,
-            required: false,
-            trim: true,
-            maxLength: 100
-        },
-        streetAddress: {
-            type: String,
-            required: false,
-            trim: true,
-            maxLength: 200 
-        },
-        area: {
-            type: String,
-            required: false,
-            trim: true,
-            maxLength: 150 
-        },
-        landmark: {
-            type: String,
-            trim: true,
-            maxLength: 150, 
-            default: ''
-        },
-        saveAddressAs: {
-        type: String,
-        enum: ['home', 'office', 'other'],
-        default: 'home'
-    }
-    }],
-    avatar: {
-        public_id: {
-            type: String,
-            required: false,
-        },
-        url: {
-            type: String,
-            required: false,
-        },
-    },
+    address: [{ type: mongoose.Schema.Types.ObjectId, ref: 'address' }],
     role: {
         type: String,
         default: "user",

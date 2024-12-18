@@ -12,7 +12,6 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
-const connectToRedis = require('../config/redisconnection');
 const auth = require('../middleware/auth')
 
 
@@ -26,7 +25,7 @@ router.post('/getallbrands',async(req,res)=>{
         res.status(400).json({message:error})
     }
 })
-
+   
 
 router.post('/getactivebrands',async(req,res)=>{
     try{
@@ -72,7 +71,7 @@ router.post('/getactivecategory',async(req,res)=>{
 router.post('/getinactivecategories',async(req,res)=>{
    try{
        const data = await Category.find({isActive:false}).populate('subCategories')
-       res.status(200).send(data)
+       res.status(200).send(data)``
    }catch(error){
     res.status(400).json({message:error})
    }

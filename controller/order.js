@@ -2,13 +2,12 @@ const express = require('express')
 const users = require('../models/users')
 const order = require('../models/order')
 const Product = require('../models/product')
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');   
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
-const connectToRedis = require('../config/redisconnection');
 const auth = require('../middleware/auth')
 
 
@@ -55,7 +54,7 @@ router.post('/createorder', async (req, res) => {
             paymentInfo,
             itemsPrice,
             taxPrice,
-            shippingPrice,
+            shippingPrice,  
             totalPrice,
         });
 

@@ -1,5 +1,6 @@
 const express = require('express')
 const users = require('../models/users')
+// const address = require('../models/address')
 const nodemailer = require('nodemailer');
 const passport = require('passport')
 const bcrypt = require('bcryptjs');
@@ -7,8 +8,8 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
-const connectToRedis = require('../config/redisconnection');
-const auth = require('../middleware/auth')
+const auth = require('../middleware/auth');
+const address = require('../models/address');
 
 
 dotenv.config();
@@ -39,7 +40,7 @@ const router = express.Router()
 //       try {
 
 //         const userExists = await users.findOne({email});
-//         console.log(userExists)
+//         //console.log(userExists)
 //         if (userExists) {
 //           return res.status(400).json({ message: 'Email already exists' });
 //         }
@@ -68,7 +69,7 @@ router.post('/login-with-phone', async (req, res) => {
         if (user) {
             const mailid = user.email
             const otp = crypto.randomBytes(3).toString('hex');
-            console.log(otp);
+            //console.log(otp);
             user.otp.code = otpCode.toString();
             user.otp.createdAt = new Date();
             user.otp.attempts = 0;
@@ -96,7 +97,7 @@ router.post('/login-with-phone', async (req, res) => {
 
         const createuser = new users({ phone })
         await createuser.save()
-        // console.log(createuser.id)
+        // //console.log(createuser.id)
         return res.redirect(`/phone-number?userId=${createuser.id}`);
 
         // user = new users({
@@ -104,7 +105,7 @@ router.post('/login-with-phone', async (req, res) => {
         // });
         // await user.save();
         // const otp = crypto.randomBytes(3).toString('hex');
-        // console.log(otp);
+        // //console.log(otp);
         // await client.setEx(user._id.toString(), 300, otp);
 
         // const transporter = nodemailer.createTransport({
@@ -132,42 +133,50 @@ router.post('/login-with-phone', async (req, res) => {
 });
 
 router.post('/verify-otp', async (req, res) => {
-    const { userId, otp } = req.body;
-    console.log(req.body)
+    const { email, otp } = req.body;
+    //console.log("entered the api")
+    //console.log(req.body);
+
     try {
-
-        const user = await user.findById(userId);
-
+        const user = await users.findOne({ email });
+        //console.log(user)
         if (!user) {
-            return { success: false, message: 'User not found' };
+            return res.json({ success: false, message: 'User not found' });
         }
 
         const oneMinute = 60 * 1000;
         const otpCreationTime = user.otp.createdAt;
-        if (!otpCreationTime || new Date() - otpCreationTime > oneMinute) {
-            return { success: false, message: 'OTP has expired' };
-        }
+
+        // if (!otpCreationTime || new Date() - otpCreationTime > oneMinute) {
+        //     return res.json({ success: false, message: 'OTP has expired' });
+        // }
 
         if (user.otp.attempts >= 5) {
-            return { success: false, message: 'Max OTP attempts exceeded' };
+            return res.json({ success: false, message: 'Max OTP attempts exceeded' });
         }
 
         if (user.otp.code !== otp) {
             user.otp.attempts += 1; // Increment attempts on failure
             await user.save();
-            return { success: false, message: 'Invalid OTP' };
+            return res.json({ success: false, message: 'Invalid OTP' });
         }
 
-        user.otp = {};
+        // Reset OTP to avoid reuse
+        user.otp = {}; 
         await user.save();
-        const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.header('Authorization', token).json({ message: 'Logged in', token });
+        // Generate JWT token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        //console.log(token)
+        // Send token and success message to frontend
+        res.header('Authorization', `Bearer ${token}`).json({ success: true, message: 'Logged in', token });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 router.get('/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
@@ -179,7 +188,7 @@ router.get('/google/callback',
         //  JWT was passed in req.user.token
 
         const { user, token } = req.user;
-        // console.log(user,token)
+        // //console.log(user,token)
         if (!user.phone) {
             return res.redirect(`/phone-number?userId=${user._id}`);
         }
@@ -190,7 +199,7 @@ router.get('/google/callback',
 
 // router.post('/phone-number', async (req, res) => {
 //     const userId = req.query.userId
-//     console.log(userId)
+//     //console.log(userId)
 //     const { phone, email, fullName ,gender} = req.body;
 
 //     try {
@@ -218,7 +227,7 @@ router.get('/google/callback',
 
 //         const mailid = user.email
 //         const otp = crypto.randomBytes(3).toString('hex');
-//         console.log(otp);
+//         //console.log(otp);
 //         user.otp.code = otpCode.toString();
 //         user.otp.createdAt = new Date();
 //         user.otp.attempts = 0;
@@ -249,78 +258,66 @@ router.get('/google/callback',
 // });
 
 router.post('/phone-number', async (req, res) => {
-    const userId = req.query.userId;
-    console.log(userId);
     const { phone, email, fullName, gender } = req.body;
-
+    //console.log("this is phone", phone);
+    //console.log("this is email", email);
     try {
-        let user = await users.findById(userId);
+        let user = await users.findOne({ email });
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (user.phone && !user.email) {
-            if (email) {
-                user.email = email;
-            }
-
-            if (fullName) {
-                user.fullName = fullName;
-            }
-            if (gender) {
-                user.gender = gender;
-            }
-
-            const otp = crypto.randomBytes(3).toString('hex');
-            console.log(otp);
-            user.otp = {
-                code: otp,
-                createdAt: new Date(),
-                attempts: 0
-            };
-
-            await user.save();
-
-            const transporter = nodemailer.createTransport({
-                service: 'Gmail',
-                auth: {
-                    user: process.env.EMAIL_USERNAME,
-                    pass: process.env.EMAIL_PASSWORD,
-                },
+            // Create a new user object if no user is found
+            user = await users.create({
+                email,
+                phone,
+                fullName,
+                gender
             });
-
-            const mailOptions = {
-                from: process.env.EMAIL_USERNAME,
-                to: user.email,
-                subject: 'Your OTP Code',
-                text: `Your OTP code is: ${otp}`,
-            };
-
-            transporter.sendMail(mailOptions);
-
-            return res.json({ message: 'OTP sent. Please verify your OTP.', userId: user._id });
-        } else if (user.email) {
-
-            user.phone = phone;
-            user.gender = gender
-
-            await user.save();
-
-
-            const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-            res.header('Authorization', token).json({ message: 'Logged in', token });
         } else {
-            return res.status(400).json({ message: 'Invalid request. Phone number is required for phone login, and both phone and email are required for Google login.' });
+            return res.json({
+                msg: "You are already registered"
+            });
         }
+
+        let user_otp = await users.findOne({ email });
+        const mailid = email;
+        const otp = crypto.randomBytes(3).toString('hex');
+
+        //console.log(otp);
+        const updatedUser = await users.findOneAndUpdate(
+            { email: email }, // Filter by the user's _id or any other unique identifier
+            {
+              $set: {
+                'otp.code': otp,
+                'otp.createdAt': Date.now(),
+                'otp.attempts': 0,
+              }
+            },
+            { new: true } // Return the updated document
+          );
+
+        const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: {
+                user: process.env.EMAIL_USERNAME,
+                pass: process.env.EMAIL_PASSWORD,
+            },
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_USERNAME,
+            to: mailid,
+            subject: 'Your OTP Code',
+            text: `Your OTP code is: ${otp}`,
+        };
+
+        transporter.sendMail(mailOptions);
+
+        return res.json({ message: 'OTP sent. Please verify your OTP.' });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ message: 'Server error' });
     }
 });
-
-
 
 // router.post('/forgotPassword', async (req, res) => {
 //     try {
@@ -514,9 +511,8 @@ router.post('/add-address', auth, async (req, res) => {
         if (!User) {
             return res.status(404).json({ message: 'User not found' });
         }
-
-        // Update the address sub-document
-        User.address = {
+        const addresses = await address.create({
+            userId,
             pincode,
             city,
             state,
@@ -524,64 +520,101 @@ router.post('/add-address', auth, async (req, res) => {
             area,
             landmark,
             saveAddressAs
-        };
-
-        await User.save();
-        res.status(201).json({ message: 'Address added successfully', address: User.address });
+        })
+        User.address.push(addresses.id)
+        User.save()
+        
+        res.status(201).json({ message: 'Address added successfully', address: addresses });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
 
-
-router.post('/update-address', auth, async (req, res) => {
-    const userId = req.user.id
-    const { pincode, city, state, streetAddress, area, landmark } = req.body;
+router.post('/get-all-addresses', auth, async (req, res) => {
+    const userId = req.user.id;
 
     try {
-        let user = await users.findById(userId);
+        const user = await users.findById(userId).select('address');
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update fields only if they are provided in the request body
-        if (pincode) user.address.pincode = pincode;
-        if (city) user.address.city = city;
-        if (state) user.address.state = state;
-        if (streetAddress) user.address.streetAddress = streetAddress;
-        if (area) user.address.area = area;
-        if (landmark) user.address.landmark = landmark;
-
-        await user.save();
-        res.json({ message: 'Address updated successfully', address: user.address });
+        res.json({ addresses:user  });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
 
+router.post('/get-address/:addressId', auth, async (req, res) => {
+    const userId = req.user.id;
+    const { addressId } = req.params; 
+
+    try {
+       
+        const user = await users.findById(userId).select('addresses');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const address = users.address.find(addr => addr._id.toString() === addressId);
+
+        if (!address) {
+            return res.status(404).json({ message: 'Address not found' });
+        }
+
+        res.json({ address });
+    } catch (error) {
+        console.error('Error fetching address:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+router.post('/update-address', auth, async (req, res) => {
+    const userId = req.user.id;
+    
+    const {addressId, pincode, city, state, streetAddress, area, landmark, saveAddressAs } = req.body;
+
+    try {
+        const user = await users.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const addresses = address.findById(addressId)
+        if (!addresses) {
+            return res.status(404).json({ message: 'Address not found' });
+        }
+
+        addresses.pincode = pincode || addresses.pincode;
+        addresses.city = city || addresses.city;
+        addresses.state = state || addresses.state;
+        addresses.streetAddress = streetAddress || addresses.streetAddress;
+        addresses.area = area || addresses.area;
+        addresses.landmark = landmark || addresses.landmark;
+        addresses.saveAddressAs = saveAddressAs || addresses.saveAddressAs;
+
+        await addresses.save();
+
+        res.json({ message: 'Address updated successfully', addresses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
 
 router.post('/delete-address', auth, async (req, res) => {
     const userId = req.user.id
+    const addressId = req.body
 
     try {
-        let user = await users.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        let addrs = await address.findByIdAndDelete(addressId)
+        if (!addrs) {
+            return res.status(404).json({ message: 'address not found' });
         }
 
-        // Clear the address sub-document
-        user.address = {
-            pincode: '',
-            city: '',
-            state: '',
-            streetAddress: '',
-            area: '',
-            landmark: ''
-        };
-
-        await user.save();
         res.json({ message: 'Address removed successfully' });
     } catch (error) {
         console.error(error);
@@ -589,5 +622,5 @@ router.post('/delete-address', auth, async (req, res) => {
     }
 });
 
-router.post('/delete')
+
 module.exports = router;  

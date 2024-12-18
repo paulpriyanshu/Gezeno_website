@@ -3,7 +3,7 @@ const cart = require('../models/cart')
 const wishlist = require('../models/wishlist')
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
-const connectToRedis = require('../config/redisconnection');
+
 const auth = require('../middleware/auth')
 
 const router = express.Router()

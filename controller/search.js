@@ -11,7 +11,6 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
-const connectToRedis = require('../config/redisconnection');
 const auth = require('../middleware/auth')
 const { Client } = require('@elastic/elasticsearch');
 const router = express.Router()
@@ -20,12 +19,97 @@ const users = require('../models/users');
 
 
 const client = new Client({
-    node: 'https://a3a51c31dafd4421b6830d422707ee5f.us-central1.gcp.cloud.es.io:443',
-    auth: {
-        username: 'enterprise_search',
-        password: 'New@121004',
-    },
+    node: 'http://localhost:9200',
+    requestTimeout: 120000, // Set the timeout to 60 seconds (60000 milliseconds)
+    sniffOnStart: true
 });
+
+// const createIndex = async () => {
+//     try {
+//         await client.indices.create({
+//             index: 'products',
+//             body: {
+//                 mappings: {
+//                     properties: {
+//                         name: { type: 'text' },
+//                         description: { type: 'text' },
+//                         price: { type: 'double' },
+//                         category: { type: 'keyword' },
+//                         subCategory: { type: 'keyword' },
+//                         subSubCategory: { type: 'keyword' },
+//                         brand: { type: 'keyword' },
+//                         suggest: { 
+//                             type: 'completion', 
+//                             analyzer: 'simple', 
+//                             search_analyzer: 'simple' 
+//                         }
+//                     }
+//                 }
+//             }
+//         });
+
+//         //console.log('Index created successfully!');
+//     } catch (error) {
+//         console.error('Error creating index:', error);
+//     }
+// };
+
+// // Call the function to create the index
+// createIndex();
+
+// const createNewIndex = async () => {
+//     try {
+//         await client.indices.create({
+//             index: 'products_v2',
+//             body: {
+//                 mappings: {
+//                     properties: {
+//                         name: { type: 'text' },
+//                         description: { type: 'text' },
+//                         price: { type: 'double' },
+//                         category: { type: 'keyword' },
+//                         subCategory: { type: 'keyword' },
+//                         subSubCategory: { type: 'keyword' },
+//                         brand: { type: 'keyword' },
+//                         suggest: {
+//                             type: 'completion',
+//                             analyzer: 'simple',
+//                             search_analyzer: 'simple'
+//                         }
+//                     }
+//                 }
+//             }
+//         });
+
+//         //console.log('New index created successfully!');
+//     } catch (error) {
+//         console.error('Error creating new index:', error);
+//     }
+// };
+
+// createNewIndex();
+
+// const reindexData = async () => {
+//     try {
+//         await client.reindex({
+//             body: {
+//                 source: {
+//                     index: 'products'
+//                 },
+//                 dest: {
+//                     index: 'products_v2'
+//                 }
+//             }
+//         });
+
+//         //console.log('Data reindexed successfully!');
+//     } catch (error) {
+//         console.error('Error reindexing data:', error);
+//     }
+// };
+
+// reindexData();
+
 
 
 
@@ -34,13 +118,13 @@ async function indexProducts() {
     try {
 
 
-        const products = await Product.find({}).populate('brand').populate('category').populate('subCategory').populate('subSubCategory').populate('brand');
-
+        const products = await Product.find().populate('brand').populate('category').populate('subCategory').populate('subSubCategory').populate('brand');
+        //console.log(products)
         for (const product of products) {
-            // console.log(product.category.name)
-
+            // //console.log(product.category.name)
+            
             await client.index({
-                index: 'products',
+                index: 'products_v2',
                 id: product._id.toString(),
                 body: {
                     name: product.name,
@@ -57,8 +141,8 @@ async function indexProducts() {
                 },
             });
         }
-
-        console.log('Products indexed successfully with suggest field!');
+        
+        //console.log('Products indexed successfully with suggest field!');
     } catch (error) {
         console.error('Error indexing products:', error);
     }
@@ -67,7 +151,7 @@ async function indexProducts() {
 indexProducts();
 
 
-router.post('/products/suggestion', async (req, res) => {
+router.post('/search/suggestion', async (req, res) => {
     try {
         const query = req.query.q;
         if (!query ) {
@@ -76,10 +160,11 @@ router.post('/products/suggestion', async (req, res) => {
                 message: 'Search query is required.',
             });
         }
+        //console.log(typeof query)
 
 
-        const { body } = await client.search({
-            index: 'products',
+        const  body  = await client.search({
+            index: 'products_v2',
             body: {
                 suggest: {
                     productSuggest: {
@@ -95,8 +180,8 @@ router.post('/products/suggestion', async (req, res) => {
                 },
             },
         });
-
-        const suggestions = body.suggest.productSuggest[0].options.map(option => option.text);
+        //console.log(body.suggest.productSuggest[0].options);
+        const suggestions = body.suggest?.productSuggest?.[0]?.options?.map(option => option.text) || [];;
 
         res.status(200).json({
             success: true,
@@ -111,9 +196,58 @@ router.post('/products/suggestion', async (req, res) => {
     }
 });
 
+// router.post('/search', async (req, res) => {
+//     try {
+//         const { query } = req.query;
+//         let brandId, categoryId, subCategoryId, subSubCategoryId;
 
-router.post('/products/search', async (req, res) => {
-    const userid = req.body
+//         if (query) {
+//             const brand = await Brand.findOne({ name: { $regex: query, $options: 'i' } });
+//             if (brand) {
+//                 brandId = brand._id;
+//             }
+
+//             // Search for the category by name and get its ObjectId
+//             const category = await Category.findOne({ name: { $regex: query, $options: 'i' } });
+//             if (category) {
+//                 categoryId = category._id;
+//             }
+
+//             // Search for the subcategory by name and get its ObjectId
+//             const subCategory = await SubCategory.findOne({ name: { $regex: query, $options: 'i' } });
+//             if (subCategory) {
+//                 subCategoryId = subCategory._id;
+//             }
+
+//             // Search for the subsubcategory by name and get its ObjectId
+//             const subSubCategory = await SubSubCategory.findOne({ name: { $regex: query, $options: 'i' } });
+//             if (subSubCategory) {
+//                 subSubCategoryId = subSubCategory._id;
+//             }
+//         }
+
+//         // Search products based on name, description, brand, category, subcategory, or subsubcategory
+//         const products = await Product.find({
+//             $or: [
+//                 { name: { $regex: query, $options: 'i' } },
+//                 { description: { $regex: query, $options: 'i' } },
+//                 ...(brandId ? [{ brand: brandId }] : []),
+//                 ...(categoryId ? [{ category: categoryId }] : []),
+//                 ...(subCategoryId ? [{ subCategory: subCategoryId }] : []),
+//                 ...(subSubCategoryId ? [{ subSubCategory: subSubCategoryId }] : [])
+//             ]
+//         }).populate('category subCategory subSubCategory brand variants');
+
+//         return res.status(200).json(products);
+//     } catch (error) {
+//         console.error('Error searching products:', error);
+//         return res.status(500).json({ message: 'Server error' });
+//     }
+// });
+
+
+router.post('/search', async (req, res) => {
+    const userid = req.body.userid
     const query = req.query.q; 
     const category = req.query.category; 
     const minPrice = req.query.minPrice; 
@@ -122,9 +256,8 @@ router.post('/products/search', async (req, res) => {
     const subcategory = req.query.subcategory;
     const subsubcategory = req.query.subsubcategory;
     
-    const user = await users.findOne({email:userid})
-
-
+    const user = await users.findOne({userid})
+    
     let filter = [];
 
     if (category) {
@@ -163,8 +296,8 @@ router.post('/products/search', async (req, res) => {
 
 
     try {
-        const { body } = await client.search({
-            index: 'products',
+        const  body  = await client.search({
+            index: 'products_v2',
             body: {
                 query: {
                     bool: {
@@ -180,23 +313,30 @@ router.post('/products/search', async (req, res) => {
                 },
             },
         });
-
-        const products = body.hits.hits.map(hit => hit._source); 
-
-        for (let product of products) {
+         
+        //console.log(body.hits.hits)
+        const products = []
+        for (let hit of body.hits.hits) {
+            const product = hit._source;
+            const productId = hit._id; 
+            const products_data = await Product.findById(productId).populate('brand').populate('category').populate('variants')
+            products.push(products_data)
+            //console.log(productId, 'productid');
+            //console.log(userid,"userid")
             await MostSearch.findOneAndUpdate(
-                { productId: product._id },
+                { productId: productId }, 
                 { $inc: { searchCount: 1 }, $set: { createdAt: new Date() } },
                 { upsert: true, new: true }
             );
+
             await RecentSearch.findOneAndUpdate(
-               {productId:product._id ,userId:user.id},
-               { $set: { createdAt: new Date() }},
-               { upsert: true, new: true }
+                { productId: productId, userId: userid },
+                { $set: { createdAt: new Date() }},
+                { upsert: true, new: true }
             );
+           
         }
-
-
+        
         
         res.status(200).json({
             success: true,
@@ -214,18 +354,92 @@ router.post('/products/search', async (req, res) => {
 
 router.post('/recent-searches',auth, async (req, res) => {
     try {
-        const userId = req.user._id; 
+        const userId = req.user.id; 
 
         const recentSearches = await RecentSearch.find({ userId })
             .sort({ createdAt: -1 }) 
             .limit(10); 
-
+        
         res.status(200).json({
             success: true,
             recentSearches,
         });
     } catch (error) {
         console.error('Error fetching recent searches:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+        });
+    }
+});
+
+
+router.post('/top-most-searched',async (req, res) => {
+    try {
+        const topMostSearched = await MostSearch.find()
+            .sort({ searchCount: -1 }) 
+            .limit(5) 
+            .populate('productId');
+
+        res.status(200).json({
+            success: true,
+            data: topMostSearched
+        });
+    } catch (error) {
+        console.error('Error fetching top most searched items:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server Error'
+        });
+    }
+});
+
+router.post('/delete-all-recent-searches',auth, async (req, res) => {
+    const { userId } = req.user.id;
+
+    try {
+        const result = await RecentSearch.deleteMany({ userId: userId }); 
+        if (result.deletedCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No recent searches found for this user.',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `All recent searches for user ${userId} have been deleted successfully.`,
+        });
+    } catch (error) {
+        console.error('Error deleting recent searches for user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+        });
+    }
+});
+
+// Route to delete a specific search by its id
+router.post('/recent-searches/:productId', auth, async (req, res) => {
+    const { productId } = req.params;
+    const userId = req.user.id; 
+
+    try {
+        const deletedSearch = await RecentSearch.findOneAndDelete({ userId: userId, productId: productId });
+
+        if (!deletedSearch) {
+            return res.status(404).json({
+                success: false,
+                message: 'Search not found for the given product and user.',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Search has been deleted successfully.',
+        });
+    } catch (error) {
+        console.error('Error deleting search by ID:', error);
         res.status(500).json({
             success: false,
             message: 'Server Error',

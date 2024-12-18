@@ -37,6 +37,8 @@ const mostSearchedSchema = new mongoose.Schema({
 
 
 
+
+
 const RecentSearch = mongoose.model('RecentSearch', recentSearchSchema);
 const MostSearch = mongoose.model('MostSearch', mostSearchedSchema);
 
