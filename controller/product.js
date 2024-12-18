@@ -71,7 +71,24 @@ router.put('/updatebrands/:name', async (req, res) => {
         res.status(400).json({ success: false, message: error.message });
     }
 });
-
+router.get('/productOfCategory/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const category = await getCategoryById(id);
+      console.log("this is the category",category._id)
+  
+      if (!category) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+      const products = await getProductsByCategory(category);
+  
+      // Return only the filtered response
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching category', error: error.message });
+    }
+  });
 router.delete('/deletebrands/:name', async (req, res) => {
     try {
         const brand = await Brand.findByIdAndDelete(req.params.name);
