@@ -413,7 +413,7 @@ const offerSchema = new mongoose.Schema({
   },
   discountType: {
     type: String,
-    default:"percentage",
+    default: "percentage",
     required: true,
     enum: ['percentage', 'flat'], // Types of discount
   },
@@ -433,34 +433,30 @@ const offerSchema = new mongoose.Schema({
     type: Boolean,
     default: true, // Whether the offer is currently active
   },
-  applicableTo: {
-    type: String,
-    required: true,
-    enum: ['product', 'category', 'global'], // Where the offer is applicable
+  
+  banner: { 
+    type: String, 
+    required: false 
   },
-  banner: { type: String, required: false },
   products: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: function () {
-        return this.applicableTo === 'product';
+        return this.products && this.products.length > 0; // If products are specified, this field becomes required
       },
     },
   ], // Array of product references
   categories: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'ParentCategory',
+      refPath: this.categories?.schema,
       required: function () {
-        return this.applicableTo === 'category';
+        console.log(this.categories?.schema)
+        return this.categories && this.categories.length > 0; // If categories are specified, categoryType becomes required
       },
     },
   ], // Array of category references
-  minPurchaseAmount: {
-    type: Number,
-    default: 0, // Minimum purchase amount required for the offer
-  },
   maxDiscount: {
     type: Number,
     required: false, // Maximum discount value (optional)
@@ -478,7 +474,6 @@ const offerSchema = new mongoose.Schema({
     default: Date.now, // Timestamp for last update
   },
 });
-
 // Middleware to update `updatedAt` on save
 offerSchema.pre('save', function (next) {
   this.updatedAt = Date.now();

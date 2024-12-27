@@ -760,7 +760,58 @@ router.post('/sizes/:id', async (req, res) => {
     });
   }
 });
+router.get('/getFlatCategories', async (req, res) => {
+  try {
+    const categories = await ParentCategory.find()
+      .populate({
+        path: 'subCategories',
+        populate: {
+          path: 'subSubCategories',
+          populate: {
+            path: 'subSubSubCategories',
+            populate: {
+              path: 'subSubSubSubCategories',
+            },
+          },
+        },
+      })
+      .exec();
 
+    // Recursive function to flatten all categories
+    const flattenCategories = (categoryList) => {
+      let flatList = [];
+      for (const category of categoryList) {
+        // Add the current category with its id, name, and schema name
+        flatList.push({
+          _id: category._id,
+          name: category.name,
+          schema: 'ParentCategory' // The schema name (hardcoded, since it's a parent category)
+        });
+
+        // If there are subcategories, flatten them
+        if (category.subCategories && category.subCategories.length > 0) {
+          flatList = flatList.concat(flattenCategories(category.subCategories));
+        }
+        if (category.subSubCategories && category.subSubCategories.length > 0) {
+          flatList = flatList.concat(flattenCategories(category.subSubCategories));
+        }
+        if (category.subSubSubCategories && category.subSubSubCategories.length > 0) {
+          flatList = flatList.concat(flattenCategories(category.subSubSubCategories));
+        }
+        if (category.subSubSubSubCategories && category.subSubSubSubCategories.length > 0) {
+          flatList = flatList.concat(flattenCategories(category.subSubSubSubCategories));
+        }
+      }
+      return flatList;
+    };
+
+    const flatCategories = flattenCategories(categories);
+
+    res.json(flatCategories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 router.get('/getCategories', async (req, res) => {
     try {
       const categories = await ParentCategory.find()
@@ -785,9 +836,7 @@ router.get('/getCategories', async (req, res) => {
   });
   router.get('/getOnlyCategories', async (req, res) => {
     try {
-      const categories = await ParentCategory.find()
-        
-  
+      const categories = await ParentCategory.find().populate('offers');
       res.json(categories);
     } catch (error) {
       res.status(500).json({ error: error.message });
