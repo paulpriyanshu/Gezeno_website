@@ -8,6 +8,7 @@ const connectdb = require('./libs/dbconnection');
 // const passport = require('passport');
 
 const homepage=require('./controller/home')
+const offers=require('./controller/offer')
 const image=require('./controller/bucket')
 const cors=require('cors')
 require('dotenv').config()
@@ -34,6 +35,7 @@ app.use('/api/',homepage);
 app.use('/api/', authRoutes);
 app.use('/api/', product);
 app.use('/api/',cart)
+app.use('/api/',offers)
 // app.use('/api',search)
 app.use('/api/',image)
 console.log("arrived here2")

@@ -401,6 +401,93 @@ const subMenu = new mongoose.Schema(
   
 const SubMenu = mongoose.model('SubMenu', subMenu);
 
+const offerSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true, // Removes extra spaces
+  },
+  description: {
+    type: String,
+    required: false,
+  },
+  discountType: {
+    type: String,
+    default:"percentage",
+    required: true,
+    enum: ['percentage', 'flat'], // Types of discount
+  },
+  discountValue: {
+    type: Number,
+    required: true, // Value for percentage (e.g., 10 for 10%) or flat discount amount
+  },
+  startDate: {
+    type: Date,
+    required: true, // Start date for the offer
+  },
+  endDate: {
+    type: Date,
+    required: true, // End date for the offer
+  },
+  isActive: {
+    type: Boolean,
+    default: true, // Whether the offer is currently active
+  },
+  applicableTo: {
+    type: String,
+    required: true,
+    enum: ['product', 'category', 'global'], // Where the offer is applicable
+  },
+  banner: { type: String, required: false },
+  products: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: function () {
+        return this.applicableTo === 'product';
+      },
+    },
+  ], // Array of product references
+  categories: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ParentCategory',
+      required: function () {
+        return this.applicableTo === 'category';
+      },
+    },
+  ], // Array of category references
+  minPurchaseAmount: {
+    type: Number,
+    default: 0, // Minimum purchase amount required for the offer
+  },
+  maxDiscount: {
+    type: Number,
+    required: false, // Maximum discount value (optional)
+  },
+  usageLimit: {
+    type: Number,
+    required: false, // How many times the offer can be used (optional)
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now, // Timestamp for offer creation
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now, // Timestamp for last update
+  },
+});
+
+// Middleware to update `updatedAt` on save
+offerSchema.pre('save', function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Offer = mongoose.model('Offer', offerSchema);
+
+
 
 module.exports = {
   ParentCategory,
@@ -424,6 +511,6 @@ module.exports = {
   Widgets,
   Filter,
   SubMenu,
-  Size
-
+  Size,
+  Offer
 };
