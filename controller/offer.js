@@ -190,26 +190,36 @@ router.get('/offers',async(req,res)=>{
     res.status(200).json({ success: true, message: 'Offer updated successfully', offers });
 
 })
-router.put('/:id', async (req, res) => {
+router.post('/editOffers/:id', async (req, res) => {
     try {
       const {
         name,
         description,
         discountType,
         discountValue,
-        startDate, // Expecting dd/mm/yy
-        endDate, // Expecting dd/mm/yy
-        applicableTo,
+        startDate,
+        endDate,
         products,
         categories,
         minPurchaseAmount,
-        banner,  // New field for banner URL
+        banner,
       } = req.body;
   
-      // Parse dates
+      // Validate ID
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ success: false, message: 'Invalid Offer ID' });
+      }
+  
+      // Parse Dates
+      const parseDate = (dateString) => {
+        const [day, month, year] = dateString.split('/');
+        return new Date(year, month - 1, day);
+      };
       const parsedStartDate = parseDate(startDate);
       const parsedEndDate = parseDate(endDate);
   
+      // Construct Update Object
       const updatedOffer = {
         name,
         description,
@@ -217,22 +227,66 @@ router.put('/:id', async (req, res) => {
         discountValue,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
-        applicableTo,
         products,
         categories,
         minPurchaseAmount,
-        banner,  // Save the banner URL
+        banner,
       };
   
-      const offer = await Offer.findByIdAndUpdate(req.params.id, updatedOffer, { new: true });
+      console.log('Updating Offer with:', updatedOffer);
+  
+      // Check if Offer Exists
+      const existingOffer = await Offer.findById(req.params.id);
+      if (!existingOffer) {
+        return res.status(404).json({ success: false, message: 'Offer not found' });
+      }
+  
+      // Update Offer
+      const offer = await Offer.findByIdAndUpdate(
+        req.params.id,
+        updatedOffer,
+        { new: true, upsert: false } // Prevent creation of a new object
+      );
   
       if (!offer) {
-        return res.status(404).json({ success: false, message: 'Offer not found' });
+        return res.status(404).json({ success: false, message: 'Offer not found after update' });
       }
   
       res.status(200).json({ success: true, message: 'Offer updated successfully', offer });
     } catch (err) {
-      res.status(400).json({ success: false, message: 'Error updating the offer', error: err.message });
+      console.error('Error updating the offer:', err);
+      res.status(500).json({ success: false, message: 'Error updating the offer', error: err.message });
     }
   });
+  const removeProductDiscounts = async (offer) => {
+    try {
+        await Product.updateMany(
+            { _id: { $in: offer.products } }, // Find products associated with the offer
+            { $pull: { discounts: offer._id } } // Remove the offer ID from the discounts array
+        );
+    } catch (err) {
+        console.error('Error removing product discounts:', err);
+        throw err;
+    }
+};
+  router.post('/offers/delete/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Extract offer ID from the route parameter
+
+        // Find and delete the offer by ID
+        const deletedOffer = await Offer.findByIdAndDelete(id);
+
+        // If no offer is found, return an error
+        if (!deletedOffer) {
+            return res.status(404).json({ success: false, message: 'Offer not found' });
+        }
+
+        // Update associated products to remove discounts related to the deleted offer
+        await removeProductDiscounts(deletedOffer);
+
+        res.status(200).json({ success: true, message: 'Offer deleted successfully', offer: deletedOffer });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Error deleting offer', error: err.message });
+    }
+});
 module.exports=router
