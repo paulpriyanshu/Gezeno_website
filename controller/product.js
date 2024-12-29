@@ -836,7 +836,7 @@ router.get('/getCategories', async (req, res) => {
   });
   router.get('/getOnlyCategories', async (req, res) => {
     try {
-      const categories = await ParentCategory.find().populate('offers');
+      const categories = await ParentCategory.find();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -986,7 +986,7 @@ router.post('/createSubSubSubCategory', async (req, res) => {
       const savedCategory = await newSubSubSubCategory.save();
   
       // Optionally, add the SubSubSubCategory to the parent SubCategory's subSubSubCategories array
-      await SubSubCategory.findByIdAndUpdate(parentSubSubCategory, {
+      await SubSubCategory.pdate(parentSubSubCategory, {
         $push: { subSubSubCategories: savedCategory._id }
       });
   

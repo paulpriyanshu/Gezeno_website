@@ -401,6 +401,25 @@ const subMenu = new mongoose.Schema(
   
 const SubMenu = mongoose.model('SubMenu', subMenu);
 
+
+const MobileCategoryHeaderSchema = new mongoose.Schema(
+  {
+    categoryId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      required: true, 
+      refPath: 'categoryType' // Dynamically reference based on `categoryType` field
+    },
+    categoryType: { 
+      type: String, 
+      required: true, 
+      enum: ['ParentCategory', 'SubCategory', 'SubSubCategory','SubSubSubCategory','SubSubSubSubCategory'] // Allowed schemas
+    }
+  }, 
+  { timestamps: true }
+);
+  
+const MobileCategoryHeader = mongoose.model('MobileCategoryHeader', MobileCategoryHeaderSchema);
+
 const offerSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -507,5 +526,6 @@ module.exports = {
   Filter,
   SubMenu,
   Size,
-  Offer
+  Offer,
+  MobileCategoryHeader
 };
