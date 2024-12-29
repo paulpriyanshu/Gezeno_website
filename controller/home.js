@@ -855,7 +855,7 @@ router.post('/custom-section/:id', async (req, res) => {
       res.status(500).json({ message: "An error occurred", error: error.message });
     }
   });
-  router.get('/submenu', async (req, res) => {
+  router.get('/mobileCategoryHeader', async (req, res) => {
     try {
       // Fetch submenu items
       const submenuItems = await MobileCategoryHeader.find();
