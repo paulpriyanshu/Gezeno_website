@@ -4,7 +4,88 @@ const { Carousel,Banner,CustomSection,Header, SecondaryCarousel,SubMenu,SubCateg
 const { populate } = require('../models/users');
 const mongoose=require('mongoose')
 
+router.get('/home/headers', async (req, res) => {
+  try {
+    const populateSubSubCategories = async (subSubCategoryIds) => {
+      if (!subSubCategoryIds || !Array.isArray(subSubCategoryIds)) return [];
+      
+      const populatedSubSubs = await Promise.all(
+        subSubCategoryIds
+          .filter(id => id) // Filter out null/undefined ids
+          .map(async (id) => {
+            const subSubCategory = await models.SubSubCategory.findById(id);
+            if (!subSubCategory) return null;
+            return subSubCategory.toObject();
+          })
+      );
+      
+      return populatedSubSubs.filter(item => item !== null);
+    };
 
+    const populateSubCategories = async (subCategoryIds) => {
+      if (!subCategoryIds || !Array.isArray(subCategoryIds)) return [];
+      
+      const populatedSubs = await Promise.all(
+        subCategoryIds
+          .filter(id => id)
+          .map(async (id) => {
+            const subCategory = await models.SubCategory.findById(id);
+            if (!subCategory) return null;
+            
+            const subCategoryObj = subCategory.toObject();
+            // Populate subSubCategories for each subCategory
+            subCategoryObj.subSubCategories = await populateSubSubCategories(subCategory.subSubCategories);
+            return subCategoryObj;
+          })
+      );
+      
+      return populatedSubs.filter(item => item !== null);
+    };
+
+    const populateParentCategory = async (categoryId) => {
+      if (!categoryId) return null;
+      
+      const parentCategory = await models.ParentCategory.findById(categoryId);
+      if (!parentCategory) return null;
+      
+      const parentCategoryObj = parentCategory.toObject();
+      // Populate subCategories for the parent category
+      parentCategoryObj.subCategories = await populateSubCategories(parentCategory.subCategories);
+      return parentCategoryObj;
+    };
+
+    // Fetch all headers
+    const headers = await Header.find();
+    
+    // Populate each header with its complete category hierarchy
+    const populatedHeaders = await Promise.all(
+      headers.map(async (header) => {
+        if (!header.categoryId) return null;
+        
+        const populatedCategory = await populateParentCategory(header.categoryId);
+        return populatedCategory ? {
+          ...header.toObject(),
+          categoryId: populatedCategory
+        } : null;
+      })
+    );
+
+    // Filter out any null results
+    const filteredHeaders = populatedHeaders.filter(header => header !== null);
+
+    res.status(200).json({
+      message: 'Header configuration fetched successfully',
+      data: filteredHeaders
+    });
+    
+  } catch (error) {
+    console.error('Header population error:', error);
+    res.status(500).json({
+      message: 'An error occurred while fetching header data',
+      error: error.message
+    });
+  }
+});
 router.post('/carousel', async (req, res) => {
   try {
     const { categoryId } = req.body;
@@ -688,6 +769,7 @@ router.post('/custom-section/:id', async (req, res) => {
       });
     }
   });
+
   router.post('/header', async (req, res) => {
     try {
       const { categoryId } = req.body;
