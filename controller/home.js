@@ -862,7 +862,7 @@ router.post('/custom-section/:id', async (req, res) => {
   
       // If no items found
       if (!submenuItems.length) {
-        return res.status(404).json({ message: 'No submenu items found' });
+        return res.status(200).json({ message: 'No submenu items found' });
       }
   
       // Define models mapping
@@ -899,41 +899,47 @@ router.post('/custom-section/:id', async (req, res) => {
       res.status(500).json({ message: 'Error retrieving submenu items', error: error.message });
     }
   });
-  router.post('/mobileCategoryHeader', async (req, res) => {
-    const { categoryId } = req.body;
-  
-    // Validate required fields    
-    if (!categoryId) {
-      return res.status(400).json({ message: "categoryId are required" });
-    }
-  
-    try {
-      let categoryType = null;
-  
-      // Identify the schema for the given categoryId
-      for (const [modelName, model] of Object.entries(models)) {
-        const exists = await model.exists({ _id: categoryId });
-        //console.log("model eists",exists)
-        if (exists) {
-          categoryType = modelName;
-          break;
-        }
+router.post('/mobileCategoryHeader', async (req, res) => {
+  const { categoryId } = req.body;
+
+  // Validate required fields
+  if (!categoryId) {
+    return res.status(400).json({ message: "categoryId is required" });
+  }
+
+  try {
+    let categoryType = null;
+
+    // Identify the schema for the given categoryId
+    for (const [modelName, model] of Object.entries(models)) {
+      const exists = await model.exists({ _id: categoryId });
+      if (exists) {
+        categoryType = modelName;
+        break;
       }
-  
-      // If no matching schema is found
-      if (!categoryType) {
-        return res.status(404).json({ message: "Invalid categoryId. No matching menu type found." });
-      }
-  
-      // Create and save the submenu item
-      const newSubMenuItem = new MobileCategoryHeader({ categoryId, categoryType });
-      await newSubMenuItem.save();
-  
-      res.status(201).json({ message: 'MobileCategoryHeader item added', data: newSubMenuItem });
-    } catch (error) {
-      res.status(500).json({ message: 'An error occurred', error: error.message });
     }
-  });
+
+    // If no matching schema is found
+    if (!categoryType) {
+      return res.status(404).json({ message: "Invalid categoryId. No matching menu type found." });
+    }
+
+    // Create and save the submenu item
+    const newSubMenuItem = new MobileCategoryHeader({ categoryId, categoryType });
+    await newSubMenuItem.save();
+
+    // Populate the categoryId based on categoryType
+    const populatedItem = await newSubMenuItem.populate('categoryId');
+
+    // Send a response including the populated categoryId
+    res.status(201).json({
+      message: 'MobileCategoryHeader item added',
+      data: populatedItem,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'An error occurred', error: error.message });
+  }
+});
   router.post('/editMobileCategoryHeader/:id', async (req, res) => {
     const { id } = req.params; // ID of the MobileCategoryHeader to be updated
     const { categoryId } = req.body; // New categoryId from the request body
