@@ -1566,7 +1566,16 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
   router.get('/products/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const product = await Product.findById(id);
+  
+      const product = await Product.findById(id)
+        .populate({
+          path: 'filters.filter', // Populate the filter field inside filters array
+          select: 'name', // Only select the name of the filter
+        })
+        .populate({
+          path: 'sizes.size', // Populate the size field inside sizes array
+          select: 'name', // Only select the name of the size
+        });
   
       if (!product) {
         return res.status(404).json({ message: 'Product not found' });
@@ -1574,6 +1583,7 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
   
       res.json(product);
     } catch (error) {
+      console.error('Error fetching product:', error.message);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
