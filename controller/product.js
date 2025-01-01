@@ -1575,6 +1575,9 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
         .populate({
           path: 'sizes.size', // Populate the size field inside sizes array
           select: 'name', // Only select the name of the size
+        })
+        .populate({
+          path: 'variants'
         });
   
       if (!product) {
