@@ -374,46 +374,43 @@ router.post('/createProduct', async (req, res) => {
       stock,
       filters,
       isActive,
-      sizes  // New field for sizes
+      sizes // Sizes array
     } = req.body;
 
     // Validate required fields
     if (!name || !price || !description) {
       return res.status(400).json({
         success: false,
-        message: "Please provide name, price, and description"
+        message: "Please provide name, price, and description",
       });
     }
-
-    // Check if filters exist and structure them properly
-    const processedFilters = filters ? {
-      filter: filters.filter || '',
-      tags: filters.tags || []
-    } : null;
 
     // Helper function to safely convert to ObjectId array
     const toObjectIdArray = (value) => {
       if (Array.isArray(value)) {
-        return value.map(id => new mongoose.Types.ObjectId(id));
+        return value.map((id) => new mongoose.Types.ObjectId(id));
       } else if (value) {
         return [new mongoose.Types.ObjectId(value)];
       }
       return [];
     };
 
-    // Helper function to process sizes input
-    //console.log("these are the sizes",sizes)
-    const processSizes = sizes? {
-         size: sizes.size || '',  // Extracts the size ID
-         tags: sizes.tags || [],  // Extracts the tags or defaults to an empty array
-       
-     
-    }:null
-    
-    // Example usage
-    // const size = { size: '67484a8811740ba5a8046434', tags: ['XL', 'L'] };
-    
-    // //console.log(processSize(size));
+    // Process filters array
+    console.log("these are filters",filters)
+    const processedFilters = filters.map((filter) => ({
+          filter: filter.filter._id, // Convert filter ID to ObjectId
+          tags: Array.isArray(filter.tags) ? filter.tags : [], // Ensure tags is an array
+        }))
+      
+    console.log("these are processed filters",processedFilters)
+    // Process sizes array
+    const processedSizes = sizes?.length>0
+      ? sizes.map((size) => ({
+          size: size.size._id, // Convert size ID to ObjectId
+          tags: Array.isArray(size.tags) ? size.tags : [], // Ensure tags is an array
+        }))
+      : [];
+
     // Create product object with validated data
     const productData = {
       name,
@@ -421,7 +418,7 @@ router.post('/createProduct', async (req, res) => {
       price,
       stock: stock || 0,
       isActive: isActive ?? true, // Use nullish coalescing to default to true
-      
+
       // Optional fields with defaults
       shortDetails: shortDetails || '',
       productSpecs: productSpecs || '',
@@ -430,13 +427,13 @@ router.post('/createProduct', async (req, res) => {
       metakeyword: metakeyword || '',
       metadescription: metadescription || '',
       metascript: metascript || '',
-      discountedPrice: discountedPrice || null,
+      discountedPrice: discountedPrice || null, 
       rating: rating || 0,
       numOfReviews: numOfReviews || 0,
 
       // Convert ObjectId fields if they exist
       category: category ? new mongoose.Types.ObjectId(category) : null,
-      brand: brand ? new mongoose.Types.ObjectId(brand) : null,
+      brand: brand ? new mongoose.Types.ObjectId(brand) : null, 
 
       // Handle array of ObjectIds
       subCategory: toObjectIdArray(subCategory),
@@ -445,45 +442,44 @@ router.post('/createProduct', async (req, res) => {
       subSubSubSubCategory: toObjectIdArray(subSubSubSubCategory),
       variants: toObjectIdArray(variants),
 
-      // Handle images array
+      // Handle images array 
       images: images || [],
-      filters: processedFilters, // Assign processed filters (null if not provided)
+      filters: processedFilters, // Assign processed filters
+      sizes: processedSizes, // Assign processed sizes
 
       // Handle reviews array with proper ObjectId conversion
-      reviews: Array.isArray(reviews) ? reviews.map(review => ({
-        user: new mongoose.Types.ObjectId(review.user),
-        name: review.name,
-        rating: review.rating,
-        comment: review.comment,
-        createdAt: review.createdAt || Date.now()
-      })) : [],
-
-      // Add sizes field (process input sizes)
-      sizes: processSizes
+      reviews: Array.isArray(reviews)
+        ? reviews.map((review) => ({
+            user: new mongoose.Types.ObjectId(review.user),
+            name: review.name,
+            rating: review.rating,
+            comment: review.comment,
+            createdAt: review.createdAt || Date.now(),
+          }))
+        : [],
     };
 
     // Create the product
     const product = await Product.create(productData);
-
+    console.log("this is uploaded",product)
     // If product is successfully created
     res.status(201).json({
       success: true,
       message: "Product created successfully",
-      product
+      product,
     });
-
   } catch (error) {
     console.error('Error in createProduct:', error);
-    
+
     // Handle specific MongoDB errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
         message: "Validation Error",
-        errors: Object.keys(error.errors).map(key => ({
+        errors: Object.keys(error.errors).map((key) => ({
           field: key,
-          message: error.errors[key].message
-        }))
+          message: error.errors[key].message,
+        })),
       });
     }
 
@@ -491,7 +487,7 @@ router.post('/createProduct', async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -523,7 +519,7 @@ router.get('/filters', async (req, res) => {
 
     if (id) {
       // Fetch a specific filter by ID
-      const filter = await Filter.findById(id); 
+      const filter = await Filter.findById(id);
       if (!filter) {
         return res.status(404).json({
           success: false,
@@ -554,12 +550,23 @@ router.get('/filters', async (req, res) => {
 });
 router.post('/filters', async (req, res) => {
   try {
-    const { name, tags } = req.body;
+    const { name, filters } = req.body;
 
-    const filter = new Filter({ name, tags });
-    await filter.save();
+    if (!name || !filters || !Array.isArray(filters)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and filters array are required'
+      });
+    }
 
-    res.status(201).json({ success: true, message: 'Filter created successfully', filter });
+    const newFilter = new Filter({ name, filters });
+    await newFilter.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Filter group created successfully',
+      filter: newFilter
+    }); 
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -568,36 +575,44 @@ router.post('/filters', async (req, res) => {
 router.post('/editfilters/:id', async (req, res) => {
   try {
     const filterId = req.params.id;
-    const { name, tags, removeTags } = req.body;
+    const { name, filters } = req.body;
 
-    // Fetch the existing filter
+    // Fetch the existing filter group
     const existingFilter = await Filter.findById(filterId);
 
     if (!existingFilter) {
-      return res.status(404).json({ success: false, message: 'Filter not found' });
+      return res.status(404).json({ success: false, message: 'Filter group not found' });
     }
 
-    // Update the filter name if provided
+    // Update the filter group name if provided
     if (name) existingFilter.name = name;
 
-    // Remove tags if `removeTags` is provided
-    if (removeTags && Array.isArray(removeTags)) {
-      existingFilter.tags = existingFilter.tags.filter(tag => !removeTags.includes(tag));
+    // Update filters if provided
+    if (filters && Array.isArray(filters)) {
+      // Iterate through provided filters to update existing ones or add new ones
+      filters.forEach((newFilter) => {
+        const index = existingFilter.filters.findIndex(
+          (filter) => filter.name === newFilter.name
+        );
+
+        if (index !== -1) {
+          // Update existing filter
+          existingFilter.filters[index].tags = Array.from(
+            new Set([...existingFilter.filters[index].tags, ...newFilter.tags])
+          ); // Merge tags without duplicates
+        } else {
+          // Add new filter
+          existingFilter.filters.push(newFilter);
+        }
+      });
     }
 
-    // Add new tags if `tags` is provided
-    if (tags && Array.isArray(tags)) {
-      // Merge existing tags with new ones, ensuring no duplicates
-      const uniqueTags = Array.from(new Set([...existingFilter.tags, ...tags]));
-      existingFilter.tags = uniqueTags;
-    }
-
-    // Save the updated filter
+    // Save the updated filter group
     const updatedFilter = await existingFilter.save();
 
     res.status(200).json({
       success: true,
-      message: 'Filter updated successfully',
+      message: 'Filter group updated successfully',
       filter: updatedFilter
     });
   } catch (error) {
@@ -608,13 +623,17 @@ router.post('/filters/:id', async (req, res) => {
   try {
     const filterId = req.params.id;
 
+    // Fetch and delete the filter group
     const deletedFilter = await Filter.findByIdAndDelete(filterId);
 
     if (!deletedFilter) {
-      return res.status(404).json({ success: false, message: 'Filter not found' });
+      return res.status(404).json({ success: false, message: 'Filter group not found' });
     }
 
-    res.status(200).json({ success: true, message: 'Filter deleted successfully' });
+    res.status(200).json({
+      success: true,
+      message: 'Filter group deleted successfully'
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -1428,81 +1447,80 @@ router.delete('/deletesubsubcategory/:name', async (req, res) => {
 //craete product variant
 router.post('/create-product-variant', async (req, res) => {
   try {
-      const {
-          productId,
-          variantName,
-          variantPrice,
-          sizes,
-          filters,
-          images,
-          customFields,
-          availableStock,
-          maxQtyPerOrder,
-          commingSoon,
-          isActive,
-      } = req.body;
+    const {
+      productId,
+      variantName,
+      variantPrice,
+      sizes,
+      filters,
+      images,
+      customFields,
+      availableStock,
+      maxQtyPerOrder,
+      commingSoon,
+      isActive,
+    } = req.body;
 
-      // Validate required fields
-      if (!productId || !variantName || variantPrice == null) {
-          return res.status(400).json({
-              message: 'Product ID, variant name, and variant price are required',
-          });
-      }
-
-      // Check if the product exists
-      const existingProduct = await Product.findById(productId);
-      if (!existingProduct) {
-          return res.status(404).json({ message: 'Product not found' });
-      }
-
-      // Validate and set sizes
-      const formattedSizes = sizes?.size
-          ? {
-                size: sizes.size,
-                tags: Array.isArray(sizes.tags) ? sizes.tags : [],
-            }
-          : null;
-
-      // Validate and set filters
-      const formattedFilters = filters?.filter
-          ? {
-                filter: filters.filter,
-                tags: Array.isArray(filters.tags) ? filters.tags : [],
-            }
-          : null;
-
-      // Create new variant with the new fields
-      const newVariant = new ProductVariant({
-          productId,
-          variantName,
-          variantPrice,
-          sizes: formattedSizes,
-          filters: formattedFilters,
-          images: images || [],
-          availableStock: availableStock || 0,
-          maxQtyPerOrder: maxQtyPerOrder || 5,
-          commingSoon: commingSoon || false,
-          isActive: isActive ?? true,
-          customFields: customFields || {},
+    // Validate required fields
+    if (!productId || !variantName || variantPrice == null) {
+      return res.status(400).json({
+        message: 'Product ID, variant name, and variant price are required',
       });
+    }
 
-      // Save the new variant
-      const savedVariant = await newVariant.save();
+    // Check if the product exists
+    const existingProduct = await Product.findById(productId);
+    if (!existingProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-      // Update the product with the new variant ID
-      if (!Array.isArray(existingProduct.variants)) {
-          existingProduct.variants = [];
-      }
-      existingProduct.variants.push(savedVariant._id);
-      await existingProduct.save();
+    // Validate and set sizes
+    console.log("these are filters",filters)
+    const formattedFilters = filters.map((filter) => ({
+          filter: filter.filter._id, // Convert filter ID to ObjectId
+          tags: Array.isArray(filter.tags) ? filter.tags : [], // Ensure tags is an array
+        }))
+      
+    // console.log("these are processed filters",processedFilters)
+    // Process sizes array
+    const formattedSizes = sizes?.length>0
+      ? sizes.map((size) => ({
+          size: size.size._id, // Convert size ID to ObjectId
+          tags: Array.isArray(size.tags) ? size.tags : [], // Ensure tags is an array
+        }))
+      : [];
+    // Create new variant with the new fields
+    const newVariant = new ProductVariant({
+      productId,
+      variantName,
+      variantPrice,
+      sizes: formattedSizes,
+      filters: formattedFilters,
+      images: images || [],
+      availableStock: availableStock || 0,
+      maxQtyPerOrder: maxQtyPerOrder || 5,
+      commingSoon: commingSoon || false,
+      isActive: isActive ?? true,
+      customFields: customFields || {},
+    });
 
-      return res.status(201).json({
-          message: 'Product variant created successfully',
-          variant: savedVariant,
-      });
+    // Save the new variant
+    const savedVariant = await newVariant.save();
+
+    // Update the product with the new variant ID
+    if (!Array.isArray(existingProduct.variants)) {
+      existingProduct.variants = [];
+    }
+    existingProduct.variants.push(savedVariant._id);
+    await existingProduct.save();
+
+    return res.status(201).json({
+      message: 'Product variant created successfully',
+      variant: savedVariant,
+    });
   } catch (error) {
-      console.error('Error creating product variant:', error);
-      return res.status(500).json({ message: 'Server error' });
+    console.error('Error creating product variant:', error);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 // PUT /edit-product-variant/:variantId
@@ -1747,8 +1765,7 @@ router.get('/products/:id', async (req, res) => {
 router.post('/update-product/:productId', async (req, res) => {
   const { productId } = req.params;
   const updateData = req.body;
-  const { variants } = updateData; // Extract variants from the update data
-  //console.log("this is updatedata of product", updateData);
+  const { variants } = updateData;
 
   try {
     // Convert brand name to ObjectId if provided
@@ -1774,42 +1791,40 @@ router.post('/update-product/:productId', async (req, res) => {
       updateData.subCategory = subCategoryDoc._id;
     }
 
-    // Convert subSubCategory name to ObjectId if provided
-    if (updateData.subSubCategory) {
-      const subSubCategoryDoc = await SubSubCategory.findById(updateData.subSubCategory);
-      if (!subSubCategoryDoc) return res.status(404).json({ message: "SubSubCategory not found" });
-      updateData.subSubCategory = subSubCategoryDoc._id;
+    // Handle filters update
+    if (updateData.filters?.length > 0) {
+      const updatedFilters = [];
+      for (const filterObj of updateData.filters) {
+        const { filter, tags } = filterObj;
+
+        // Validate filter existence
+        const filterDoc = await Filter.findById(filter);
+        if (!filterDoc) {
+          return res.status(404).json({ message: `Filter with ID ${filter} not found` });
+        }
+
+        // Push the valid filter to the array
+        updatedFilters.push({ filter: filterDoc._id, tags: tags || [] });
+      }
+      updateData.filters = updatedFilters;
     }
 
-    // Convert subSubSubCategory name to ObjectId if provided
-    if (updateData.subSubSubCategory) {
-      const subSubSubCategoryDoc = await SubSubSubCategory.findById(updateData.subSubSubCategory);
-      if (!subSubSubCategoryDoc) return res.status(404).json({ message: "SubSubSubCategory not found" });
-      updateData.subSubSubCategory = subSubSubCategoryDoc._id;
-    }
+    // Handle sizes update
+    if (updateData.sizes?.length > 0) {
+      const updatedSizes = [];
+      for (const sizeObj of updateData.sizes) {
+        const { size, tags } = sizeObj;
 
-    // Handle filter update
-    if (updateData.filters?.tags?.length > 0) {
-      const { filter: filterId, tags } = updateData.filters;
+        // Validate size existence
+        const sizeDoc = await Size.findById(size);
+        if (!sizeDoc) {
+          return res.status(404).json({ message: `Size with ID ${size} not found` });
+        }
 
-      // Validate filter existence
-      const filterDoc = await Filter.findById(filterId);
-      if (!filterDoc) return res.status(404).json({ message: `Filter with ID ${filterId} not found` });
-
-      // Update the filters field
-      updateData.filters = { filter: filterDoc._id, tags };
-    }
-
-    // Handle size update
-    if (updateData.sizes?.tags?.length > 0) {
-      const { size: sizeId, tags } = updateData.sizes;
-
-      // Validate size existence
-      const sizeDoc = await Size.findById(sizeId);
-      if (!sizeDoc) return res.status(404).json({ message: `Size with ID ${sizeId} not found` });
-
-      // Update the sizes field
-      updateData.sizes = { size: sizeDoc._id, tags };
+        // Push the valid size to the array
+        updatedSizes.push({ size: sizeDoc._id, tags: tags || [] });
+      }
+      updateData.sizes = updatedSizes;
     }
 
     // Handle new variants
@@ -1826,13 +1841,6 @@ router.post('/update-product/:productId', async (req, res) => {
           productSellingPrice,
           customFields,
         } = variant;
-
-        // Validate required fields for each variant
-        // if (!variantName || variantPrice == null || productSellingPrice == null) {
-        //   return res
-        //     .status(400)
-        //     .json({ message: "Variant name, variant price, and product selling price are required for all variants." });
-        // }
 
         // Create the new variant
         const newVariant = new ProductVariant({
@@ -1869,8 +1877,8 @@ router.post('/update-product/:productId', async (req, res) => {
     })
       .populate("brand", "name") // Only select the 'name' field of the brand
       .populate("category", "name") // Only select the 'name' field of the category
-      .populate("filters.filter", "name")
-      .populate("sizes.size", "name")
+      .populate("filters.filter", "name") // Populate filters
+      .populate("sizes.size", "name") // Populate sizes
       .populate("variants", "variantName variantPrice sizes images");
 
     if (!product) return res.status(404).json({ message: "Product not found" });

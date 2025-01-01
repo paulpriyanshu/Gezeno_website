@@ -121,7 +121,7 @@ metakeyword:{
   ],
   rating: { type: Number, default: 0 },
   numOfReviews: { type: Number, default: 0 },
-  filters: 
+  filters: [
     {
       filter: { 
         type: mongoose.Schema.Types.ObjectId, 
@@ -133,8 +133,9 @@ metakeyword:{
         required: false
       } // Tags selected from the filter (e.g., ["Red", "Blue"])
     }
+  ]
   ,
-  sizes: 
+  sizes: [
   {
     size: { 
       type: mongoose.Schema.Types.ObjectId, 
@@ -145,7 +146,8 @@ metakeyword:{
       type: [String], 
       required: false
     } // Tags selected from the filter (e.g., ["Red", "Blue"])
-  },
+  }
+],
   reviews: [
     {
       user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
@@ -175,7 +177,7 @@ const productVariantSchema = new mongoose.Schema({
             filename: { type: String, required: false }
         }
     ],
-    filters: 
+    filters: [
     {
       filter: { 
         type: mongoose.Schema.Types.ObjectId, 
@@ -187,9 +189,8 @@ const productVariantSchema = new mongoose.Schema({
         required: false
       } // Tags selected from the filter (e.g., ["Red", "Blue"])
     }
-  ,
-  sizes: 
-  {
+  ],
+  sizes: [{
     size: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'Size', 
@@ -199,7 +200,7 @@ const productVariantSchema = new mongoose.Schema({
       type: [String], 
       required: false
     } // Tags selected from the filter (e.g., ["Red", "Blue"])
-  },
+  }],
     
     createdAt: { 
       type: Date, 
