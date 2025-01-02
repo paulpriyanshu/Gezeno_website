@@ -7,7 +7,7 @@ const {  Brand,
     SubSubSubCategory,
     SubSubSubSubCategory,
     Product,
-    ProductVariant,Carousel,CustomSection,Filter,Size} = require('../models/product')
+    ProductVariant,Carousel,CustomSection,Filter,Size,Cart} = require('../models/product')
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -16,6 +16,7 @@ const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
 const auth = require('../middleware/auth')
 const mongoose = require("mongoose");
+
 
 const router = express.Router()
 
@@ -1993,6 +1994,83 @@ router.get('/products/popular', async (req, res) => {
         });
     }
 });
+router.post('/cart', async (req, res) => {
+  try {
+    const { cart } = req.body; // Expecting an array of product IDs
+    const newCart = new Cart({ cart });
+    await newCart.save();
+    res.status(201).json(newCart);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get all carts
+ */
+router.get('/cart', async (req, res) => { 
+  try {
+    const carts = await Cart.find() // Populating product details
+    
+    // Extract only the array of products from each cart document
+    const productsArray = carts.map((cart) => cart.cart);
+
+    res.status(200).json(productsArray);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get a specific cart by ID
+ */
+router.get('/cart/:id', async (req, res) => {
+  try {
+    const cart = await Cart.findById(req.params.id).populate('cart');
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+    res.status(200).json(cart);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Update a cart (add/remove products)
+ */
+router.post('/updateCart/:id', async (req, res) => {
+  try {
+    const { cart } = req.body; // Expecting an updated array of product IDs
+    const updatedCart = await Cart.findByIdAndUpdate(
+      req.params.id,
+      { cart },
+      { new: true, runValidators: true } // `new: true` returns the updated document
+    ).populate('cart');
+    if (!updatedCart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+    res.status(200).json(updatedCart);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Delete a cart
+ */
+router.post('/deleteCart/:id', async (req, res) => {
+  try {
+    const deletedCart = await Cart.findByIdAndDelete(req.params.id);
+    if (!deletedCart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+    res.status(200).json({ message: 'Cart deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 

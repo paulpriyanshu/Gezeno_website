@@ -504,6 +504,20 @@ const Offer = mongoose.model('Offer', offerSchema);
 
 
 
+const CartSchema = new mongoose.Schema({
+  cart: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product', // This references the Product schema
+    }
+  ]
+});
+
+// Export the schema
+const Cart = mongoose.model('Cart', CartSchema);
+
+
+
 module.exports = {
   ParentCategory,
   SubCategory,
@@ -528,5 +542,6 @@ module.exports = {
   SubMenu,
   Size,
   Offer,
-  MobileCategoryHeader
+  MobileCategoryHeader,
+  Cart
 };
