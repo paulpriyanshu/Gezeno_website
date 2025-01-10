@@ -2073,6 +2073,73 @@ router.post('/deleteCart/:id', async (req, res) => {
 
 
 
+router.post('/search/:term', async (req, res) => {
+  try {
+    const term = req.params.term;
+    const regex = new RegExp(term, 'i'); // Case-insensitive regex for searching
+    const results = {};
+
+    // Search in Parent Categories
+    results.parentCategories = await ParentCategory.find({
+      $or: [{ name: regex }, { description: regex }],
+    }).populate('subCategories');
+
+    // Search in Subcategories
+    results.subCategories = await SubCategory.find({
+      $or: [{ name: regex }, { description: regex }],
+    }).populate('parentCategory subSubCategories');
+
+    // Search in Sub-Subcategories
+    results.subSubCategories = await SubSubCategory.find({
+      $or: [{ name: regex }, { description: regex }],
+    }).populate('parentSubCategory subSubSubCategories');
+
+    // Search in Sub-Sub-Subcategories
+    results.subSubSubCategories = await SubSubSubCategory.find({
+      $or: [{ name: regex }, { description: regex }],
+    }).populate('parentSubSubCategory subSubSubSubCategories');
+
+    // Search in Sub-Sub-Sub-Subcategories
+    results.subSubSubSubCategories = await SubSubSubSubCategory.find({
+      $or: [{ name: regex }, { description: regex }],
+    }).populate('parentSubSubSubCategory');
+
+    // Search in Products
+    results.products = await Product.find({
+      $or: [
+        { name: regex },
+        { description: regex },
+        { shortDetails: regex },
+        { metatitle: regex },
+        { metakeyword: regex },
+        { metadescription: regex },
+      ],
+    }).populate(
+      'category subCategory subSubCategory subSubSubCategory subSubSubSubCategory brand'
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Search results retrieved successfully',
+      data: results,
+    });
+  } catch (err) {
+    console.error('Error while searching:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error while searching',
+      error: err.message
+    });
+  }
+});
+// Example Usage
+// searchAll('searchTerm')
+//   .then((results) => {
+//     console.log('Search Results:', results);
+//   })
+//   .catch((err) => console.error(err));
+
+
 
 
 module.exports = router;

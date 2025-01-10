@@ -27,21 +27,29 @@ const getImageUrl = (key) => {
 
 // Define a function to get a signed URL for uploading an image
 const imageUpload = async (filename) => {
-    const uniqueFilename = generateUniqueFilename(filename);
+    // const uniqueFilename = generateUniqueFilename(filename);
     const command = new PutObjectCommand({
         Bucket: "gezeno",
-        Key: `images/${uniqueFilename}`,
+        Key: `images/${filename}`,
         ContentType: "image/jpeg"
     });
     const url = await getSignedUrl(s3Client, command, { expiresIn: 900 }); // Set expiration time to 900 seconds (15 minutes)
-    return { url, uniqueFilename };
+    return { url, filename };
 };
 
 // Define an endpoint to get a signed URL for uploading an image
+const crypto = require("crypto");
+
 router.get('/imageUpload/:name', async (req, res) => {
     try {
-        const { url, uniqueFilename } = await imageUpload(req.params.name);
-        //console.log("URL to upload image:", url);
+        const originalName = req.params.name;
+        // Generate a unique identifier
+        const uniqueId = crypto.randomBytes(4).toString('hex'); // 8-character unique ID
+        const uniqueFilename = `${uniqueId}-${originalName}`;
+        console.log("file name is",uniqueFilename)
+        // Call your image upload function with the unique filename
+        const { url } = await imageUpload(uniqueFilename);
+
         res.json({ url, filename: uniqueFilename });
     } catch (error) {
         console.error("Error generating signed upload URL:", error);
