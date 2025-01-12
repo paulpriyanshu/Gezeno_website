@@ -516,7 +516,27 @@ const CartSchema = new mongoose.Schema({
 // Export the schema
 const Cart = mongoose.model('Cart', CartSchema);
 
+const TermAndConditionSchema= new mongoose.Schema({
+  terms:{
+    type:String,
+    required:false
+  },
+  privacyPolicy:{
+    type:String,
+    required:false
+  },
+  returns:{
+    type:String,
+    required:false,
+  },
+  cancellation:{
+    type:String,
+    required:false
+  }
 
+})
+
+const TermsAndCondition = mongoose.model('TermsAndCondition',TermAndConditionSchema)
 
 module.exports = {
   ParentCategory,
@@ -543,5 +563,6 @@ module.exports = {
   Size,
   Offer,
   MobileCategoryHeader,
-  Cart
+  Cart,
+  TermsAndCondition
 };

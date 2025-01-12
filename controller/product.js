@@ -7,7 +7,8 @@ const {  Brand,
     SubSubSubCategory,
     SubSubSubSubCategory,
     Product,
-    ProductVariant,Carousel,CustomSection,Filter,Size,Cart} = require('../models/product')
+    ProductVariant,Carousel,CustomSection,Filter,Size,Cart,
+    TermsAndCondition} = require('../models/product')
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -2130,6 +2131,48 @@ router.post('/search/:term', async (req, res) => {
       message: 'Error while searching',
       error: err.message
     });
+  }
+});
+router.post('/terms-and-conditions', async (req, res) => {
+  const { terms, privacyPolicy, returns, cancellation } = req.body;
+
+  try {
+    // Find an existing document or create a new one
+    const updatedTerms = await TermsAndCondition.findOneAndUpdate(
+      {}, // Empty filter means it looks for the first document (or none)
+      {
+        terms, // Update or set these fields
+        privacyPolicy,
+        returns,
+        cancellation,
+      },
+      {
+        new: true, // Return the updated document
+        upsert: true, // Create a new document if none exists
+      }
+    );
+
+    res.status(201).json({ message: 'Terms saved successfully', data: updatedTerms });
+  } catch (error) {
+    res.status(500).json({ error: 'Error saving terms', details: error.message });
+  }
+});
+
+// GET Route to Fetch Terms and Conditions
+router.get('/terms-and-conditions', async (req, res) => {
+  try {
+    const termsData = await TermsAndCondition.findOne(); // Fetch the first document
+    if (!termsData) {
+      return res.status(404).json({
+        terms: "",
+        privacyPolicy: "",
+        returns: "",
+        cancellation: "",
+      });
+    }
+    res.status(200).json(termsData);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching terms and conditions" });
   }
 });
 // Example Usage
