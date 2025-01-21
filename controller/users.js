@@ -155,15 +155,25 @@ router.post('/verify-otp', async (req, res) => {
             return res.json({ success: false, message: 'Max OTP attempts exceeded' });
         }
 
-        if (user.otp.code !== otp) {
-            user.otp.attempts += 1; // Increment attempts on failure
-            await user.save();
-            return res.json({ success: false, message: 'Invalid OTP' });
-        }
+        // if (user.otp.code !== otp) {
+           
+        // }
 
         // Reset OTP to avoid reuse
-        user.otp = {}; 
+      if (user.otp.code.trim()===otp.trim()) {
+          user.otp = {}; 
+          await user.save();
+      } else {
+        console.log("otp type:", typeof otp, "value:", otp);
+        console.log("otp type:", typeof user.otp.code, "value:", otp);
+
+
+        console.log("this is your otp",  user.otp.code, "and this is otp", otp);
+        user.otp.attempts += 1; // Increment attempts on failure
         await user.save();
+        return res.json({ success: false, message: 'Invalid OTP' });
+        
+      }
 
         // Generate JWT token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -175,13 +185,13 @@ router.post('/verify-otp', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
-});
-
-
+}); 
+ 
+ 
 router.get('/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
 );
-
+ 
 router.get('/google/callback',
     passport.authenticate('google', { session: false }),
     (req, res) => {
@@ -259,41 +269,35 @@ router.get('/google/callback',
 
 router.post('/phone-number', async (req, res) => {
     const { phone, email, fullName, gender } = req.body;
-    //console.log("this is phone", phone);
-    //console.log("this is email", email);
+
     try {
         let user = await users.findOne({ email });
+
+        // Create a new user object if no user is found
         if (!user) {
-            // Create a new user object if no user is found
             user = await users.create({
                 email,
                 phone,
                 fullName,
                 gender
             });
-        } else {
-            return res.json({
-                msg: "You are already registered"
-            });
         }
 
-        let user_otp = await users.findOne({ email });
-        const mailid = email;
+        // Generate and update OTP regardless of user registration status
         const otp = crypto.randomBytes(3).toString('hex');
-
-        //console.log(otp);
-        const updatedUser = await users.findOneAndUpdate(
-            { email: email }, // Filter by the user's _id or any other unique identifier
+        await users.findOneAndUpdate(
+            { email: email }, // Filter by the user's email
             {
-              $set: {
-                'otp.code': otp,
-                'otp.createdAt': Date.now(),
-                'otp.attempts': 0,
-              }
+                $set: {
+                    'otp.code': otp,
+                    'otp.createdAt': Date.now(),
+                    'otp.attempts': 0,
+                }
             },
             { new: true } // Return the updated document
-          );
+        );
 
+        // Send the OTP via email
         const transporter = nodemailer.createTransport({
             service: 'Gmail',
             auth: {
@@ -304,12 +308,12 @@ router.post('/phone-number', async (req, res) => {
 
         const mailOptions = {
             from: process.env.EMAIL_USERNAME,
-            to: mailid,
+            to: email,
             subject: 'Your OTP Code',
             text: `Your OTP code is: ${otp}`,
         };
 
-        transporter.sendMail(mailOptions);
+        await transporter.sendMail(mailOptions);
 
         return res.json({ message: 'OTP sent. Please verify your OTP.' });
 
