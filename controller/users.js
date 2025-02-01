@@ -59,134 +59,110 @@ const router = express.Router()
 //   );
 
 
-router.post('/login-with-phone', async (req, res) => {
-
-    const { phone } = req.body;
+// Login with email and send OTP
+router.post('/login-with-email', async (req, res) => {
+    const { email } = req.body;
 
     try {
-        let user = await users.findOne({ phone });
+        let user = await users.findOne({ email });
 
-        if (user) {
-            const mailid = user.email
-            const otp = crypto.randomBytes(3).toString('hex');
-            //console.log(otp);
-            user.otp.code = otpCode.toString();
-            user.otp.createdAt = new Date();
-            user.otp.attempts = 0;
-
-            const transporter = nodemailer.createTransport({
-                service: 'Gmail',
-                auth: {
-                    user: process.env.EMAIL_USERNAME,
-                    pass: process.env.EMAIL_PASSWORD,
-                },
-            });
-
-            const mailOptions = {
-                from: process.env.EMAIL_USERNAME,
-                to: mailid,
-                subject: 'Your OTP Code',
-                text: `Your OTP code is: ${otp}`,
-            };
-
-            transporter.sendMail(mailOptions);
-
-            return res.json({ message: 'OTP sent. Please verify your OTP.', userId: user._id });
-
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        const createuser = new users({ phone })
-        await createuser.save()
-        // //console.log(createuser.id)
-        return res.redirect(`/phone-number?userId=${createuser.id}`);
+        // Generate a 6-character OTP
+        const otp = crypto.randomBytes(3).toString('hex'); // Hex generates 6 chars (e.g., "a3f4b2")
+        
+        // Store OTP and creation time
+        user.otp = {
+            code: otp,
+            createdAt: new Date(),
+            attempts: 0,
+        };
 
-        // user = new users({
-        //     phone, email, fullName
-        // });
-        // await user.save();
-        // const otp = crypto.randomBytes(3).toString('hex');
-        // //console.log(otp);
-        // await client.setEx(user._id.toString(), 300, otp);
+        await user.save(); // Save OTP details
 
-        // const transporter = nodemailer.createTransport({
-        //     service: 'Gmail',
-        //     auth: {
-        //         user: process.env.EMAIL_USERNAME,
-        //         pass: process.env.EMAIL_PASSWORD,
-        //     },
-        // });
+        // Configure nodemailer
+        const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: {
+                user: process.env.EMAIL_USERNAME,
+                pass: process.env.EMAIL_PASSWORD,
+            },
+        });
 
-        // const mailOptions = {
-        //     from: process.env.EMAIL_USERNAME,
-        //     to: user.email,
-        //     subject: 'Your OTP Code',
-        //     text: `Your OTP code is: ${otp}`,
-        // };
+        const mailOptions = {
+            from: process.env.EMAIL_USERNAME,
+            to: email,
+            subject: 'Your OTP Code',
+            text: `Your OTP code is: ${otp}`,
+        };
 
-        // await transporter.sendMail(mailOptions);
+        await transporter.sendMail(mailOptions);
 
-        // res.json({ message: 'OTP sent. Please verify your OTP.', userId: user._id });
+        return res.json({ message: 'OTP sent. Please verify your OTP.', userId: user._id,user });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
+// Verify OTP and log in
+
 router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
-    //console.log("entered the api")
-    //console.log(req.body);
 
     try {
         const user = await users.findOne({ email });
-        //console.log(user)
+
         if (!user) {
-            return res.json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const oneMinute = 60 * 1000;
-        const otpCreationTime = user.otp.createdAt;
+        // OTP expiration check (1 min)
+        const oneMinute = 60 * 1000; // 60 seconds
+        const otpCreationTime = user.otp.createdAt ? new Date(user.otp.createdAt) : null;
 
-        // if (!otpCreationTime || new Date() - otpCreationTime > oneMinute) {
-        //     return res.json({ success: false, message: 'OTP has expired' });
-        // }
+        if (!otpCreationTime || new Date() - otpCreationTime > oneMinute) {
+            return res.status(400).json({ success: false, message: 'OTP has expired' });
+        }
 
+        // Max OTP attempts exceeded
         if (user.otp.attempts >= 5) {
-            return res.json({ success: false, message: 'Max OTP attempts exceeded' });
+            return res.status(400).json({ success: false, message: 'Max OTP attempts exceeded' });
         }
 
-        // if (user.otp.code !== otp) {
-           
-        // }
+        // Compare OTP using bcrypt
+        const isMatch = await bcrypt.compare(otp, user.otp.code);
 
-        // Reset OTP to avoid reuse
-      if (user.otp.code.trim()===otp.trim()) {
-          user.otp = {}; 
-          await user.save();
-      } else {
-        console.log("otp type:", typeof otp, "value:", otp);
-        console.log("otp type:", typeof user.otp.code, "value:", otp);
+        if (isMatch) {
+            // Reset OTP on success
+            user.otp = {}; 
+            await user.save();
 
+            // Generate JWT token
+            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        console.log("this is your otp",  user.otp.code, "and this is otp", otp);
-        user.otp.attempts += 1; // Increment attempts on failure
-        await user.save();
-        return res.json({ success: false, message: 'Invalid OTP' });
-        
-      }
-
-        // Generate JWT token
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        //console.log(token)
-        // Send token and success message to frontend
-        res.header('Authorization', `Bearer ${token}`).json({ success: true, message: 'Logged in', token });
+            return res.header('Authorization', `Bearer ${token}`).json({ 
+                success: true, 
+                message: 'Logged in', 
+                token 
+            });
+        } else {
+            // Increment failed attempts
+            user.otp.attempts += 1;
+            await user.save();
+            return res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
-}); 
- 
+});
+
+module.exports = router;
  
 router.get('/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
@@ -269,7 +245,7 @@ router.get('/google/callback',
 
 router.post('/phone-number', async (req, res) => {
     const { phone, email, fullName, gender } = req.body;
-
+    console.log(fullName)
     try {
         let user = await users.findOne({ email });
 
