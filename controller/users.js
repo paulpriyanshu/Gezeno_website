@@ -71,7 +71,7 @@ router.post('/login-with-email', async (req, res) => {
         }
 
         // Generate a 6-character OTP
-        const otp = crypto.randomBytes(3).toString('hex'); // Hex generates 6 chars (e.g., "a3f4b2")
+        const otp = (parseInt(crypto.randomBytes(3).toString('hex'), 16) % 1000000).toString().padStart(6, '0');// Hex generates 6 chars (e.g., "a3f4b2")
         
         // Store OTP and creation time
         user.otp = {
@@ -94,8 +94,8 @@ router.post('/login-with-email', async (req, res) => {
         const mailOptions = {
             from: process.env.EMAIL_USERNAME,
             to: email,
-            subject: 'Your OTP Code',
-            text: `Your OTP code is: ${otp}`,
+            subject: 'Gezeno Login OTP',
+            text: `Registration OTP Verification\n\nDear User,\n\nPlease use the following OTP to verify your email address:\n\n${otp}\n\nThis OTP is valid for the next 2 minutes.\n\nIf you did not request this OTP, please ignore this email.\n\nThank you,\nGezeno\nPhone: +91-95xxxxxxx6\nEmail: kcisteam1@gmail.com\nwww.gezeno.in`
         };
 
         await transporter.sendMail(mailOptions);
