@@ -940,7 +940,23 @@ router.post('/custom-section/:id', async (req, res) => {
   router.get('/mobileCategoryHeader', async (req, res) => {
     try {
       // Fetch submenu items
-      const submenuItems = await MobileCategoryHeader.find();
+      const submenuItems = await MobileCategoryHeader.find()
+      .populate({
+        path: 'categoryId',
+        select: 'name _id image', // ✅ Only include name, id, and image
+        populate: {
+          path: 'subCategories',
+          model: 'SubCategory',
+          select: 'name _id image', // ✅ Only include name, id, and image
+          populate: {
+            path: 'subSubCategories',
+            model: 'SubSubCategory',
+            select: 'name _id image', // ✅ Only include name, id, and image
+            strictPopulate: false
+          },
+          strictPopulate: false
+        }
+      });
   
       // If no items found
       if (!submenuItems.length) {

@@ -69,85 +69,43 @@ const subSubSubSubCategorySchema = new mongoose.Schema({
 const SubSubSubSubCategory = mongoose.model('SubSubSubSubCategory', subSubSubSubCategorySchema);
 
 // Product Schema
+
+
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: { type: String, required: true },
-  shortDetails:{
-    type:String,
-    required:[false,"Please enter product short detail"]
-},
-description: {
-    type: String,
-    required: [false, "Please enter product description"],
-},
-productSpecs: {
-    type: String,
-    required: [false, "Please enter product specification"],
-},
-ratings: {
-    type: Number,
-    default: 0,
-},
-metatitle:{
-    type: String,
-    required:[false]
-},
-metakeyword:{
-    type: String,
-    required:[false]
-}, 
- metadescription:{
-    type: String,
-    required:[false]
-},
- metascript:{
-    type: String,
-    required:[false]
-},
+  parentProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: false }, // Reference to parent product if it's a variant
+  shortDetails: { type: String, required: false },
+  description: { type: String, required: false },
+  productSpecs: { type: String, required: false },
+  ratings: { type: Number, default: 0 },
+  metatitle: { type: String, required: false },
+  metakeyword: { type: String, required: false },
+  metadescription: { type: String, required: false },
+  metascript: { type: String, required: false },
   price: { type: Number, required: true },
   discountedPrice: { type: Number, required: false },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: false },
   subCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory', required: false }],
-  subSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubCategory', required: false }],
-  subSubSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubSubCategory', required: false }],
-  subSubSubSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubSubSubCategory', required: false }],
-  brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: false},
-  variants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant',required:false }],
+  brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: false },
   images: [
     {
       url: { type: String, required: true },
       filename: { type: String, required: true }
     }
   ],
-  rating: { type: Number, default: 0 },
   numOfReviews: { type: Number, default: 0 },
   filters: [
     {
-      filter: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Filter', 
-        required: false 
-      }, // Reference to the filter (e.g., "Color")
-      tags: { 
-        type: [String], 
-        required: false
-      } // Tags selected from the filter (e.g., ["Red", "Blue"])
+      filter: { type: mongoose.Schema.Types.ObjectId, ref: 'Filter', required: false },
+      tags: { type: [String], required: false }
     }
-  ]
-  ,
+  ],
   sizes: [
-  {
-    size: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Size', 
-      required: false 
-    }, 
-    tags: { 
-      type: [String], 
-      required: false
-    } // Tags selected from the filter (e.g., ["Red", "Blue"])
-  }
-],
+    {
+      size: { type: mongoose.Schema.Types.ObjectId, ref: 'Size', required: false },
+      tags: { type: [String], required: false }
+    }
+  ],
   reviews: [
     {
       user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
@@ -159,59 +117,69 @@ metakeyword:{
   ],
   stock: { type: Number, required: true, default: 0 },
   isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
+  
+  // Variants (Using same Product schema)
+  variants: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    }
+  ]
+}, { timestamps: true });
 
 const Product = mongoose.model('Product', productSchema);
-const productVariantSchema = new mongoose.Schema({
-    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    color: { type: String, required: false },
-    variantName: { type: String, required: true },
-    commingSoon: { type: Boolean, default: false },
-    variantPrice: { type: Number, required: true },
-    isActive: { type: Boolean, default: true },
-    images: [
-        {
-            url: { type: String, required: false },
-            filename: { type: String, required: false }
-        }
-    ],
-    filters: [
-    {
-      filter: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Filter', 
-        required: false 
-      }, // Reference to the filter (e.g., "Color")
-      tags: { 
-        type: [String], 
-        required: false
-      } // Tags selected from the filter (e.g., ["Red", "Blue"])
-    }
-  ],
-  sizes: [{
-    size: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Size', 
-      required: false 
-    }, 
-    tags: { 
-      type: [String], 
-      required: false
-    } // Tags selected from the filter (e.g., ["Red", "Blue"])
-  }],
+
+
+
+
+// const productVariantSchema = new mongoose.Schema({
+//     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+//     color: { type: String, required: false },
+//     variantName: { type: String, required: true },
+//     commingSoon: { type: Boolean, default: false },
+//     variantPrice: { type: Number, required: true },
+//     isActive: { type: Boolean, default: true },
+//     images: [
+//         {
+//             url: { type: String, required: false },
+//             filename: { type: String, required: false }
+//         }
+//     ],
+//     filters: [
+//     {
+//       filter: { 
+//         type: mongoose.Schema.Types.ObjectId, 
+//         ref: 'Filter', 
+//         required: false 
+//       }, // Reference to the filter (e.g., "Color")
+//       tags: { 
+//         type: [String], 
+//         required: false
+//       } // Tags selected from the filter (e.g., ["Red", "Blue"])
+//     }
+//   ],
+//   sizes: [{
+//     size: { 
+//       type: mongoose.Schema.Types.ObjectId, 
+//       ref: 'Size', 
+//       required: false 
+//     }, 
+//     tags: { 
+//       type: [String], 
+//       required: false
+//     } // Tags selected from the filter (e.g., ["Red", "Blue"])
+//   }],
     
-    createdAt: { 
-      type: Date, 
-      default: Date.now 
-    },
-    availableStock: { type: Number, default: 0 }, // New field for available stock
-    maxQtyPerOrder: { type: Number, default: 5 }, // New field for max quantity per order
-    customFields: { type: Map, of: String }, // Optional custom fields
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-});
+//     createdAt: { 
+//       type: Date, 
+//       default: Date.now 
+//     },
+//     availableStock: { type: Number, default: 0 }, // New field for available stock
+//     maxQtyPerOrder: { type: Number, default: 5 }, // New field for max quantity per order
+//     customFields: { type: Map, of: String }, // Optional custom fields
+//     createdAt: { type: Date, default: Date.now },
+//     updatedAt: { type: Date, default: Date.now }
+// });
 const filterSchema = new mongoose.Schema({
   name: { type: String, required: true},
   tags: { type: [String], default: [] },
@@ -234,7 +202,7 @@ const Size = mongoose.model('Size', sizeSchema);
 
 module.exports = Size;
 
-const ProductVariant=mongoose.model('ProductVariant', productVariantSchema);
+// const ProductVariant=mongoose.model('ProductVariant', productVariantSchema);
 // Brand Schema
 const brandSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -546,7 +514,7 @@ module.exports = {
   SubSubSubSubCategory,
   Product, 
   Brand,
-  ProductVariant,
+  // ProductVariant,
   CustomSection,
   Banner,
   Carousel,

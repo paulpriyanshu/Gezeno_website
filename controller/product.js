@@ -416,6 +416,7 @@ router.post('/createProduct', async (req, res) => {
     // Create product object with validated data
     const productData = {
       name,
+      parentProduct:null,
       description,
       price,
       stock: stock || 0,
@@ -515,6 +516,44 @@ router.post('/createProduct', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// Route to add an existing product as a variant under a parent product
+router.post('/products/:parentId/add-variant/:variantId', async (req, res) => {
+  try {
+    const { parentId, variantId } = req.params;
+
+    // Check if parent product exists
+    const parentProduct = await Product.findById(parentId);
+    if (!parentProduct) {
+      return res.status(404).json({ message: 'Parent product not found' });
+    }
+
+    // Check if variant product exists
+    const variantProduct = await Product.findById(variantId);
+    if (!variantProduct) {
+      return res.status(404).json({ message: 'Variant product not found' });
+    }
+
+    // Check if variant is already added
+    if (parentProduct.variants.includes(variantId)) {
+      return res.status(400).json({ message: 'Variant already linked to parent product' });
+    }
+
+    // Add the variant product's ID to the parent product's `variants` array
+    parentProduct.variants.push(variantId);
+
+    // Also set the `parentProduct` on the variant product
+    variantProduct.parentProduct = parentId;
+
+    // Save both the parent product and the variant product
+    await parentProduct.save();
+    await variantProduct.save();
+
+    return res.status(200).json({ message: 'Variant added successfully', parentProduct });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 router.get('/filters', async (req, res) => {
   try {
     const { id } = req.query; // Optional query parameter for filter ID
@@ -552,16 +591,18 @@ router.get('/filters', async (req, res) => {
 });
 router.post('/filters', async (req, res) => {
   try {
-    const { name, filters } = req.body;
+    const { name, tags } = req.body;
+    console.log("name",name)
+    console.log("tags",tags)
 
-    if (!name || !filters || !Array.isArray(filters)) {
+    if (!name || !tags ) {
       return res.status(400).json({
         success: false,
-        message: 'Name and filters array are required'
+        message: 'Name and tags array are required'
       });
     }
 
-    const newFilter = new Filter({ name, filters });
+    const newFilter = new Filter({ name, tags });
     await newFilter.save();
 
     res.status(201).json({
@@ -577,7 +618,9 @@ router.post('/filters', async (req, res) => {
 router.post('/editfilters/:id', async (req, res) => {
   try {
     const filterId = req.params.id;
-    const { name, filters } = req.body;
+    const { name, tags } = req.body;
+
+    console.log("Editing filter with tags:", tags);
 
     // Fetch the existing filter group
     const existingFilter = await Filter.findById(filterId);
@@ -589,25 +632,13 @@ router.post('/editfilters/:id', async (req, res) => {
     // Update the filter group name if provided
     if (name) existingFilter.name = name;
 
-    // Update filters if provided
-    if (filters && Array.isArray(filters)) {
-      // Iterate through provided filters to update existing ones or add new ones
-      filters.forEach((newFilter) => {
-        const index = existingFilter.filters.findIndex(
-          (filter) => filter.name === newFilter.name
-        );
-
-        if (index !== -1) {
-          // Update existing filter
-          existingFilter.filters[index].tags = Array.from(
-            new Set([...existingFilter.filters[index].tags, ...newFilter.tags])
-          ); // Merge tags without duplicates
-        } else {
-          // Add new filter
-          existingFilter.filters.push(newFilter);
-        }
-      });
+    // Update tags if provided
+    if (tags && Array.isArray(tags)) {
+      existingFilter.tags = Array.from(new Set([...existingFilter.tags, ...tags])); // Merge and remove duplicates
     }
+
+    // Update the updatedAt timestamp
+    existingFilter.updatedAt = new Date();
 
     // Save the updated filter group
     const updatedFilter = await existingFilter.save();
@@ -615,10 +646,11 @@ router.post('/editfilters/:id', async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Filter group updated successfully',
-      filter: updatedFilter
+      updatedFilter
     });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    console.error("Error updating filter:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 router.post('/filters/:id', async (req, res) => {
@@ -1564,22 +1596,59 @@ router.post('/edit-product-variant/:variantId', async (req, res) => {
       return res.status(500).json({ message: 'Server error' });
     }
   });
-  // GET /get-product-variant/:variantId
   router.get('/products/:id', async (req, res) => {
     try {
       const { id } = req.params;
   
+      // Find the product and populate all required fields
       const product = await Product.findById(id)
         .populate({
-          path: 'filters.filter', // Populate the filter field inside filters array
-          select: 'name', // Only select the name of the filter
+          path: 'filters.filter', // Populate filters inside product
+          select: 'name',
         })
         .populate({
-          path: 'sizes.size', // Populate the size field inside sizes array
-          select: 'name', // Only select the name of the size
+          path: 'sizes.size', // Populate sizes inside product
+          select: 'name',
         })
         .populate({
-          path: 'variants'
+          path: 'variants', // Populate variants (which are also products)
+          populate: [
+            {
+              path: 'filters.filter', // Populate filters inside each variant
+              select: 'name',
+            },
+            {
+              path: 'sizes.size', // Populate sizes inside each variant
+              select: 'name',
+            },
+          ],
+        })
+        .populate({
+          path: 'parentProduct', // Populate the parentProduct if it's a variant
+          select: 'name price filters sizes variants', // Select necessary fields
+          populate: [
+            {
+              path: 'filters.filter', // Populate filters inside parent product
+              select: 'name',
+            },
+            {
+              path: 'sizes.size', // Populate sizes inside parent product
+              select: 'name',
+            },
+            {
+              path: 'variants', // Populate variants of the parent product
+              populate: [
+                {
+                  path: 'filters.filter', // Populate filters inside each variant of the parent product
+                  select: 'name',
+                },
+                {
+                  path: 'sizes.size', // Populate sizes inside each variant of the parent product
+                  select: 'name',
+                },
+              ],
+            },
+          ],
         });
   
       if (!product) {
