@@ -510,6 +510,7 @@ router.post('/createProduct', async (req, res) => {
               path:'sizes.size',
               model:'Size',
             })
+         
 
         res.status(200).json(products);
     } catch (error) {

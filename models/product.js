@@ -86,6 +86,7 @@ const productSchema = new mongoose.Schema({
   discountedPrice: { type: Number, required: false },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentCategory', required: false },
   subCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory', required: false }],
+  subSubCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubSubCategory', required: false }],
   brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: false },
   images: [
     {
