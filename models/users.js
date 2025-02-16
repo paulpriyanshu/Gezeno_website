@@ -25,7 +25,13 @@ const userSchema = new mongoose.Schema({
         validate: [validator.isMobilePhone, "Please enter a valid phone number"],
         maxLength: [15, "Phone number cannot exceed 15 characters"],  // Adjust length based on country
     },
-    address: [{ type: mongoose.Schema.Types.ObjectId, ref: "address" }],
+    address: {
+        street: { type: String, trim: true,required:false},
+        city: { type: String, trim: true ,required:false},
+        state: { type: String, trim: true ,required:false},
+        country: { type: String, trim: true ,required:false},
+        pincode: { type: String, trim: true ,required:false},
+    },
     role: {
         type: String,
         enum: ["user", "admin", "editor"], // Define allowed roles

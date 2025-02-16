@@ -183,6 +183,32 @@ router.get('/google/callback',
     }
 );
 
+
+router.post("/get-user", async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Validate email
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        // Find user and fetch only the 'address' field
+        const user = await users.findOne({ email })
+
+        if (!user || !user.address) {
+            return res.status(404).json({ message: "Address not found" });
+        }
+
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("Error fetching user address:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+module.exports = router;
+
 // router.post('/phone-number', async (req, res) => {
 //     const userId = req.query.userId
 //     //console.log(userId)
@@ -384,6 +410,53 @@ router.post('/update-Profile', auth, async (req, res) => {
     }
 });
 
+router.post("/get-address", async (req, res) => {
+    try {
+        const { user_email } = req.body;
+        console.log("Received email:", user_email);
+
+        const user = await users.findOne({ email: user_email }).select("address -_id");
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ message: "success", address: user.address });
+    } catch (error) {
+        console.error("Error fetching user address:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+router.post('/edit-address', async (req, res) => {
+    const { user_email, street, city, state, pincode, country } = req.body.values;
+    console.log("user_email", req.body);
+    console.log("city", city);
+  
+    const address = { street, city, state, pincode, country };
+    
+    try {
+      if (!user_email) {
+        return res.status(404).json({ message: 'User email is required' });
+      }
+  
+      const is_user = await users.findOne({ email: user_email });
+      if (!is_user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      await users.updateOne(
+        { email: user_email },
+        { $set: { address: address } }
+      );
+  
+      console.log("Address updated successfully");
+      return res.status(200).json({ message: "Address updated successfully" });  // ✅ Send success response
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Error updating address" });  // ✅ Send error response
+    }
+  });
 // Delete user account
 router.post('/delete-Account', auth, async (req, res) => {
     try {

@@ -2,6 +2,7 @@ const express = require('express')
 const authRoutes = require('./controller/users');
 const product = require('./controller/product')
 const cart = require('./controller/cart')
+const order = require('./controller/order')
 // const search = require('./controller/search')
 const limiter = require('./middleware/ratelimit')
 const connectdb = require('./libs/dbconnection');
@@ -10,7 +11,8 @@ const connectdb = require('./libs/dbconnection');
 const homepage=require('./controller/home')
 const offers=require('./controller/offer')
 const image=require('./controller/bucket')
-const cors=require('cors')
+const cors=require('cors');
+// const order = require('./models/order');
 require('dotenv').config()
 
 const app = express()
@@ -36,7 +38,7 @@ app.use('/api/', authRoutes);
 app.use('/api/', product);
 app.use('/api/',cart)
 app.use('/api/',offers)
-// app.use('/api',search)
+app.use('/api',order)
 app.use('/api/',image)
 console.log("arrived here2")
 
