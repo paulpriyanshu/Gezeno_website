@@ -25,7 +25,7 @@ app.use(cors());
 
 
 connectdb()
-require('./libs/passport');
+// require('./libs/passport');
 // app.use(passport.initialize());
 
 
