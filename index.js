@@ -21,7 +21,15 @@ const port = 8080
 
 
 connectdb()
-app.use(cors())
+app.use(
+    cors({
+        origin: 'https://gezeno.in', // Allow requests from your frontend
+        methods: 'GET, POST, OPTIONS, PUT, DELETE',
+        allowedHeaders: 'Authorization, Content-Type',
+        credentials: true, // If using cookies/authentication headers
+    })
+);
+
 
 connectdb()
 require('./libs/passport');
