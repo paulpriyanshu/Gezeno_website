@@ -9,7 +9,8 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
 const auth = require('../middleware/auth')
-const mongoose =require("mongoose")
+const mongoose =require("mongoose");
+const { default: axios } = require('axios');
 
 
 const router = express.Router();
@@ -18,6 +19,32 @@ router.get('/oneprod',async(req,res)=>{
     const product=await Product.findById('679e5a9205ddc2c5ace06f61')
     res.json(product)
 })
+
+router.post("/shiprocket/create-order", async (req, res) => {
+    try {
+        const { token, ...orderData } = req.body; // Extract token from body
+
+        if (!token) {
+            return res.status(400).json({ error: "Shiprocket token is required" });
+        }
+
+        const response = await axios.post(
+            "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
+            orderData, // Send remaining order details
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`, // Use token received from frontend
+                },
+            }
+        );
+
+        res.json(response.data);
+    } catch (error) {
+        console.error("Shiprocket API error:", error.response?.data || error.message);
+        res.status(500).json({ error: error.response?.data || "Server error" });
+    }
+});
 router.post('/createorder', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
