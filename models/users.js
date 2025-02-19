@@ -74,4 +74,41 @@ userSchema.pre("save", async function (next) {
     next();
 });
 
-module.exports = mongoose.model("User", userSchema);
+const adminSchema = new mongoose.Schema({
+    email: {
+        type: String,
+        trim: true,
+        unique: true,
+        required: [true, "Email is required"],
+        lowercase: true,
+        validate: [validator.isEmail, "Please enter a valid email address"],
+    },
+    password: {
+        type: String,
+        required: [true, "Password is required"],
+        minlength: [6, "Password must be at least 6 characters long"],
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+// Hash password before saving
+adminSchema.pre("save", async function (next) {
+    if (this.isModified("password")) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+    }
+    next();
+});
+
+const Admin= mongoose.model("Admin", adminSchema);
+
+
+const User=mongoose.model("User", userSchema);
+
+module.exports={
+    User,
+    Admin
+}

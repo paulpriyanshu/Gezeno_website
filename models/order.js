@@ -1,3 +1,4 @@
+const { selectFields } = require("express-validator/lib/field-selection");
 const mongoose = require("mongoose");
 
 const orderSchema = mongoose.Schema({
@@ -43,6 +44,10 @@ const orderSchema = mongoose.Schema({
                 required: true,
                 ref: "Product",
             },
+            size:{
+                type:String,
+                required:false
+            }
         },
     ],
     paymentInfo: {

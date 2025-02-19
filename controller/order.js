@@ -33,7 +33,8 @@ router.post('/createorder', async (req, res) => {
             taxPrice,
             shippingPrice,
             totalPrice,
-            userId 
+            userId,
+            size
         } = req.body;
 
         // Log each field separately to debug undefined values
@@ -45,6 +46,7 @@ router.post('/createorder', async (req, res) => {
         console.log("shippingPrice:", shippingPrice);
         console.log("totalPrice:", totalPrice);
         console.log("userId:", userId);
+        console.log("selected Size",size)
 
         // Validate required fields
         if (!shippingInfo || !orderItems || !userId || itemsPrice === undefined || taxPrice === undefined || shippingPrice === undefined || totalPrice === undefined) {
@@ -79,6 +81,7 @@ router.post('/createorder', async (req, res) => {
             taxPrice,
             shippingPrice,
             totalPrice,
+            size
         });
 
         const savedOrder = await newOrder.save({ session });
@@ -128,7 +131,7 @@ router.get('/orders/:email', async (req, res) => {
 // Get all orders
 router.get('/orders', async (req, res) => {
     try {
-        const orders = await order.find().populate('user', 'email name').populate('orderItems.product');
+        const orders = await order.find().populate('user', 'email fullName phone address').populate('orderItems.product');
 
         return res.status(200).json({ message: 'All orders retrieved successfully', orders });
 

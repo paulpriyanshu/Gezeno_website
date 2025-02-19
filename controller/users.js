@@ -1,5 +1,5 @@
 const express = require('express')
-const users = require('../models/users')
+const {User} = require('../models/users')
 // const address = require('../models/address')
 const nodemailer = require('nodemailer');
 const passport = require('passport')
@@ -10,6 +10,8 @@ const { body, validationResult } = require('express-validator');
 const dotenv = require('dotenv');
 const auth = require('../middleware/auth');
 const address = require('../models/address');
+const {Admin} = require('../models/users');
+const { default: axios } = require('axios');
 
 
 dotenv.config();
@@ -64,7 +66,7 @@ router.post('/login-with-email', async (req, res) => {
     const { email } = req.body;
 
     try {
-        let user = await users.findOne({ email });
+        let user = await User.findOne({ email });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -114,7 +116,7 @@ router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
 
     try {
-        const user = await users.findOne({ email });
+        const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -183,6 +185,94 @@ router.get('/google/callback',
     }
 );
 
+router.post("/createAdmin", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Check if the admin already exists
+        const existingAdmin = await Admin.findOne({ email });
+        if (existingAdmin) {
+            return res.status(400).json({ message: "Admin already exists" });
+        }
+
+        // Create new Admin
+        const newAdmin = await Admin.create({ email, password });
+
+        res.status(201).json({ success: true, admin: newAdmin });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+router.post(
+    "/admin/login",
+    [
+        body("email").isEmail().withMessage("Enter a valid email"),
+        body("password").notEmpty().withMessage("Password is required"),
+    ],
+    async (req, res) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({ success: false, errors: errors.array() });
+            }
+
+            const { email, password } = req.body;
+            console.log("Admin login attempt:", email);
+
+            // ✅ Step 1: Check if admin exists
+            const admin = await Admin.findOne({ email });
+            if (!admin) {
+                return res.status(404).json({ success: false, message: "Admin not found" });
+            }
+
+            // ✅ Step 2: Compare password
+            const isMatch = await bcrypt.compare(password, admin.password);
+            if (!isMatch) {
+                return res.status(401).json({ success: false, message: "Invalid credentials" });
+            }
+
+            // ✅ Step 3: Generate JWT Token for Admin
+            const adminToken = jwt.sign(
+                { id: admin._id, email: admin.email, role: "admin" },
+                process.env.JWT_SECRET2,
+                { expiresIn: "2h" }
+            );
+
+            // ✅ Step 4: Authenticate with ShipRocket
+            let shiprocketToken = null;
+            try {
+                console.log('url',process.env.SHIPROCKET_API,email,password)
+                const shiprocketResponse = await axios.post("https://apiv2.shiprocket.in/v1/external/auth/login", {
+                    email: email,
+                    password: password
+                });
+
+                
+                shiprocketToken = shiprocketResponse.data.token;
+            } catch (error) {
+                console.error("ShipRocket API error:", error.response?.data || error.message);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: "Failed to authenticate with ShipRocket",
+                    error: error.response?.data || error.message 
+                });
+            }
+
+            // ✅ Step 5: Return both tokens
+            res.status(200).json({
+                success: true,
+                message: "Admin login successful",
+                adminToken: adminToken,
+                shiprocketToken: shiprocketToken
+            });
+
+        } catch (error) {
+            console.error("Server error:", error);
+            res.status(500).json({ success: false, message: "Server error", error: error.message });
+        }
+    }
+);
 
 router.post("/get-user", async (req, res) => {
     try {
@@ -194,7 +284,7 @@ router.post("/get-user", async (req, res) => {
         }
 
         // Find user and fetch only the 'address' field
-        const user = await users.findOne({ email })
+        const user = await User.findOne({ email })
 
         if (!user || !user.address) {
             return res.status(404).json({ message: "Address not found" });
@@ -215,7 +305,7 @@ module.exports = router;
 //     const { phone, email, fullName ,gender} = req.body;
 
 //     try {
-//         let user = await users.findById(userId);
+//         let user = await User.findById(userId);
 //         if (!user) {
 //             return res.status(404).json({ message: 'User not found' });
 //         }
@@ -273,11 +363,11 @@ router.post('/phone-number', async (req, res) => {
     const { phone, email, fullName, gender } = req.body;
     console.log(fullName)
     try {
-        let user = await users.findOne({ email });
+        let user = await User.findOne({ email });
 
         // Create a new user object if no user is found
         if (!user) {
-            user = await users.create({
+            user = await User.create({
                 email,
                 phone,
                 fullName,
@@ -287,7 +377,7 @@ router.post('/phone-number', async (req, res) => {
 
         // Generate and update OTP regardless of user registration status
         const otp = crypto.randomBytes(3).toString('hex');
-        await users.findOneAndUpdate(
+        await User.findOneAndUpdate(
             { email: email }, // Filter by the user's email
             {
                 $set: {
@@ -327,7 +417,7 @@ router.post('/phone-number', async (req, res) => {
 
 // router.post('/forgotPassword', async (req, res) => {
 //     try {
-//       const user = await users.findOne({ email: req.body.email });
+//       const user = await User.findOne({ email: req.body.email });
 //       if (!user) {
 //         return res.status(404).json({ status: 'fail', message: 'There is no user with that email address.' });
 //       }
@@ -335,7 +425,7 @@ router.post('/phone-number', async (req, res) => {
 //       const resetToken = crypto.randomBytes(32).toString('hex');
 //       user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 //       user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-//       await users.save({ validateBeforeSave: false });
+//       await User.save({ validateBeforeSave: false });
 
 //       const resetURL = `${req.protocol}://${req.get('host')}/api/resetPassword/${resetToken}`;
 //       const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}\nIf you didn't forget your password, please ignore this email!`;
@@ -364,7 +454,7 @@ router.post('/phone-number', async (req, res) => {
 //     try {
 //       const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
-//       const user = await users.findOne({
+//       const user = await User.findOne({
 //         resetPasswordToken: hashedToken,
 //         resetPasswordExpires: { $gt: Date.now() },
 //       });
@@ -389,7 +479,7 @@ router.post('/phone-number', async (req, res) => {
 router.post('/update-Profile', auth, async (req, res) => {
     const { username, email, phone, gender } = req.body;
     try {
-        const user = await users.findById(req.user.id);
+        const user = await User.findById(req.user.id);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -415,7 +505,7 @@ router.post("/get-address", async (req, res) => {
         const { user_email } = req.body;
         console.log("Received email:", user_email);
 
-        const user = await users.findOne({ email: user_email }).select("address -_id");
+        const user = await User.findOne({ email: user_email }).select("address -_id");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -440,12 +530,12 @@ router.post('/edit-address', async (req, res) => {
         return res.status(404).json({ message: 'User email is required' });
       }
   
-      const is_user = await users.findOne({ email: user_email });
+      const is_user = await User.findOne({ email: user_email });
       if (!is_user) {
         return res.status(404).json({ message: "User not found" });
       }
   
-      await users.updateOne(
+      await User.updateOne(
         { email: user_email },
         { $set: { address: address } }
       );
@@ -460,7 +550,7 @@ router.post('/edit-address', async (req, res) => {
 // Delete user account
 router.post('/delete-Account', auth, async (req, res) => {
     try {
-        const user = await users.findByIdAndDelete(req.user.id);
+        const user = await User.findByIdAndDelete(req.user.id);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -476,7 +566,7 @@ router.post('/delete-Account', auth, async (req, res) => {
 // Get user profile
 router.post('/profile', auth, async (req, res) => {
     try {
-        const user = await users.findById(req.user.id)
+        const user = await User.findById(req.user.id)
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -494,7 +584,7 @@ router.post('/profile', auth, async (req, res) => {
 //     const { currentPassword, newPassword } = req.body;
 
 //     try {
-//       const user = await users.findById(req.user.id);
+//       const user = await User.findById(req.user.id);
 
 //       if (!user) {
 //         return res.status(404).json({ message: 'User not found' });
@@ -518,9 +608,9 @@ router.post('/profile', auth, async (req, res) => {
 //   });
 
 
-router.post('/getallusers', async (req, res) => {
+router.get('/getallusers', async (req, res) => {
     try {
-        const allUsers = await users.find()
+        const allUsers = await User.find()
         res.status(200).json(allUsers);
     } catch (error) {
         console.error(error);
@@ -560,7 +650,7 @@ router.post('/add-address', auth, async (req, res) => {
     const { pincode, city, state, streetAddress, area, landmark, saveAddressAs } = req.body;
 
     try {
-        let User = await users.findById(userId);
+        let User = await User.findById(userId);
         if (!User) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -588,7 +678,7 @@ router.post('/get-all-addresses', auth, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const user = await users.findById(userId).select('address');
+        const user = await User.findById(userId).select('address');
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -606,13 +696,13 @@ router.post('/get-address/:addressId', auth, async (req, res) => {
 
     try {
        
-        const user = await users.findById(userId).select('addresses');
+        const user = await User.findById(userId).select('addresses');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const address = users.address.find(addr => addr._id.toString() === addressId);
+        const address = User.address.find(addr => addr._id.toString() === addressId);
 
         if (!address) {
             return res.status(404).json({ message: 'Address not found' });
@@ -631,7 +721,7 @@ router.post('/update-address', auth, async (req, res) => {
     const {addressId, pincode, city, state, streetAddress, area, landmark, saveAddressAs } = req.body;
 
     try {
-        const user = await users.findById(userId);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }

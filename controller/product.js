@@ -896,7 +896,7 @@ router.get('/getCategories', async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
-  
+
   router.get('/getSingleCategory/:id', async (req, res) => {
     try { 
       const { id } = req.params;
@@ -1914,44 +1914,44 @@ router.post('/update-product/:productId', async (req, res) => {
     }
 
     // Handle new variants
-    if (variants?.length > 0) {
-      const newVariants = [];
-      for (const variant of variants) {
-        const {
-          variantName,
-          variantPrice,
-          sizes,
-          images,
-          availableStock,
-          maxQtyPerOrder,
-          productSellingPrice,
-          customFields,
-        } = variant;
+    // if (variants?.length > 0) {
+    //   const newVariants = [];
+    //   for (const variant of variants) {
+    //     const {
+    //       variantName,
+    //       variantPrice,
+    //       sizes,
+    //       images,
+    //       availableStock,
+    //       maxQtyPerOrder,
+    //       productSellingPrice,
+    //       customFields,
+    //     } = variant;
 
-        // Create the new variant
-        const newVariant = new ProductVariant({
-          productId,
-          variantName,
-          variantPrice,
-          sizes: sizes || [],
-          images: images || [],
-          availableStock: availableStock || 0,
-          maxQtyPerOrder: maxQtyPerOrder || 5,
-          productSellingPrice,
-          customFields: customFields || {},
-        });
+    //     // Create the new variant
+    //     const newVariant = new ProductVariant({
+    //       productId,
+    //       variantName,
+    //       variantPrice,
+    //       sizes: sizes || [],
+    //       images: images || [],
+    //       availableStock: availableStock || 0,
+    //       maxQtyPerOrder: maxQtyPerOrder || 5,
+    //       productSellingPrice,
+    //       customFields: customFields || {},
+    //     });
 
-        const savedVariant = await newVariant.save();
-        newVariants.push(savedVariant);
-      }
+    //     const savedVariant = await newVariant.save();
+    //     newVariants.push(savedVariant);
+    //   }
 
-      // Add new variant IDs to the product's variant list
-      const existingProduct = await Product.findById(productId);
-      if (!existingProduct) return res.status(404).json({ message: "Product not found" });
+    //   // Add new variant IDs to the product's variant list
+    //   const existingProduct = await Product.findById(productId);
+    //   if (!existingProduct) return res.status(404).json({ message: "Product not found" });
 
-      existingProduct.variants.push(...newVariants.map((v) => v._id));
-      await existingProduct.save();
-    }
+    //   existingProduct.variants.push(...newVariants.map((v) => v._id));
+    //   await existingProduct.save();
+    // }
 
     // Exclude updatedAt field from updateData if it exists
     delete updateData.updatedAt;
