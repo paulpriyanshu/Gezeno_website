@@ -1,5 +1,5 @@
 const express = require('express')
-const users = require('../models/users')
+const {User} = require('../models/users')
 const order = require('../models/order')
 const {Product} = require('../models/product')
 const nodemailer = require('nodemailer');   
@@ -113,7 +113,7 @@ router.get('/orders/:email', async (req, res) => {
             return res.status(400).json({ message: 'Email is required' });
         }
 
-        const user = await users.findOne({ email });
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
