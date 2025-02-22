@@ -501,6 +501,14 @@ const TermAndConditionSchema= new mongoose.Schema({
   cancellation:{
     type:String,
     required:false
+  },
+  contactus:{
+    type:String,
+    required:false
+  },
+  aboutus:{
+    type:String,
+    required:false
   }
 
 })

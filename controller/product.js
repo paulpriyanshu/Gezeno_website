@@ -2205,7 +2205,7 @@ router.post('/search/:term', async (req, res) => {
   }
 });
 router.post('/terms-and-conditions', async (req, res) => {
-  const { terms, privacyPolicy, returns, cancellation } = req.body;
+  const { terms, privacyPolicy, returns, cancellation,aboutus,contactus } = req.body;
 
   try {
     // Find an existing document or create a new one
@@ -2216,6 +2216,8 @@ router.post('/terms-and-conditions', async (req, res) => {
         privacyPolicy,
         returns,
         cancellation,
+        aboutus,
+        contactus
       },
       {
         new: true, // Return the updated document
@@ -2239,6 +2241,8 @@ router.get('/terms-and-conditions', async (req, res) => {
         privacyPolicy: "",
         returns: "",
         cancellation: "",
+        aboutus:"",
+        contactus:""
       });
     }
     res.status(200).json(termsData);
