@@ -11,6 +11,7 @@ const connectdb = require('./libs/dbconnection');
 const homepage=require('./controller/home')
 const offers=require('./controller/offer')
 const image=require('./controller/bucket')
+const coupons=require('./controller/coupon')
 const cors=require('cors');
 // const order = require('./models/order');
 require('dotenv').config()
@@ -41,6 +42,7 @@ app.use('/api/',cart)
 app.use('/api/',offers)
 app.use('/api',order)
 app.use('/api/',image)
+app.use('/api/',coupons)
 console.log("arrived here2")
 
 //console.log(process.env.EMAIL_USERNAME)

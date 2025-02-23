@@ -1,3 +1,58 @@
+const express=require('express')
+const Coupon = require('../models/coupon')
+
+
+const router=express.Router()
+router.post('/createCoupon',async (req, res) => {
+    try {
+        const coupon = new Coupon(req.body);
+        await coupon.save();
+        res.status(201).json({ success: true, message: 'Coupon created successfully', data: coupon });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+});
+
+// Get all coupons
+router.get('/getAllCoupons',async (req, res) => {
+    try {
+        const coupons = await Coupon.find();
+        res.status(200).json({ success: true, data: coupons });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/getCoupon/:id', async (req, res) => {
+    try {
+        const coupon = await Coupon.findById(req.params.id);
+        if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
+        res.status(200).json({ success: true, data: coupon });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/updateCoupon/:id', async (req, res) => {
+    try {
+        const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
+        res.status(200).json({ success: true, message: 'Coupon updated successfully', data: coupon });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+});
+
+// Delete a coupon
+router.post('/deleteCoupon/:id', async (req, res) => {
+    try {
+        const coupon = await Coupon.findByIdAndDelete(req.params.id);
+        if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
+        res.status(200).json({ success: true, message: 'Coupon deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 router.post('/coupons/apply', async (req, res) => {
     const { userId, couponCode, orderValue, categoryIds, productIds } = req.body;
 
@@ -96,3 +151,5 @@ router.post('/coupons/apply', async (req, res) => {
         });
     }
 });
+
+module.exports=router

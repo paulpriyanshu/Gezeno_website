@@ -476,29 +476,44 @@ router.post('/phone-number', async (req, res) => {
 //   });
 
 
-router.post('/update-Profile', auth, async (req, res) => {
+router.post('/update-profile', async (req, res) => {
     const { username, email, phone, gender } = req.body;
+
     try {
-        const user = await User.findById(req.user.id);
+        // Validate required fields
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        // Find user by email
+        const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update fields if provided
-        if (username) user.username = username;
-        if (email) user.email = email;
-        if (phone) user.phone = phone;
-        if (gender) user.gender = gender;
+        // Check if the new email is already taken by another user
+        if (email !== user.email) {
+            const emailExists = await User.findOne({ email });
+            if (emailExists) {
+                return res.status(400).json({ message: 'Email is already in use' });
+            }
+        }
 
-        await user.save();
+        // Update the user with new data
+        const updatedUser = await User.findByIdAndUpdate(
+            user._id,
+            { fullName:username, email, phone, gender },
+            { new: true, runValidators: true } // Returns updated user & applies validation
+        );
 
-        res.status(200).json({ message: 'Profile updated successfully', user });
+        return res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error updating profile:', error);
+        return res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 router.post("/get-address", async (req, res) => {
     try {
