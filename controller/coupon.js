@@ -1,5 +1,6 @@
 const express=require('express')
 const Coupon = require('../models/coupon')
+const User=require('../controller/users')
 
 
 const router=express.Router()
@@ -55,10 +56,12 @@ router.post('/deleteCoupon/:id', async (req, res) => {
 });
 router.post('/coupons/apply', async (req, res) => {
     const { userId, couponCode, orderValue, categoryIds, productIds } = req.body;
-
+    console.log("coupon body",req.body)
     try {
         const coupon = await Coupon.findOne({ code: couponCode });
-
+            coupon.applicableCategories.map((coupon)=>console.log(coupon.toString()))
+          
+            console.log("applicableCategory",coupon)
         if (!coupon) {
             return res.status(404).json({
                 success: false,
@@ -100,10 +103,14 @@ router.post('/coupons/apply', async (req, res) => {
                 });
             }
         }
-
+        
         // Check category and product applicability
         if (coupon.applicableCategories.length > 0) {
-            const applicableCategory = categoryIds.some(categoryId => coupon.applicableCategories.includes(categoryId));
+            
+            const applicableCategory = categoryIds.some(categoryId => 
+                coupon.applicableCategories.some(applicableId => applicableId.toString() === categoryId)
+            );
+            console.log(applicableCategory)
             if (!applicableCategory) {
                 return res.status(400).json({
                     success: false,

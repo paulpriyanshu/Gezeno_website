@@ -1,5 +1,5 @@
 const express = require('express')
-const {User} = require('../models/users')
+const {User, ContactDetails} = require('../models/users')
 // const address = require('../models/address')
 const nodemailer = require('nodemailer');
 const passport = require('passport')
@@ -414,6 +414,36 @@ router.post('/phone-number', async (req, res) => {
         return res.status(500).json({ message: 'Server error' });
     }
 });
+
+router.post('/contact-details',async(req,res)=>{
+    const {name,email,message}=req.body
+    if(!name || !email|| !message){
+        res.status(404).send({
+            message:"all fields are required"
+        })
+    }
+  try {
+      const details=await ContactDetails.create({
+          name,
+          email,
+          message
+      })
+      res.status(200).send(details)
+  } catch (error) {
+    res.send(404).send("error",error)
+  }
+
+
+})
+router.get('/get-contacts',async(req,res)=>{
+    try {
+        const contacts=await ContactDetails.find()
+        res.status(200).json(contacts)
+    } catch (error) {
+        res.status(404).send("error",error)
+    }
+    
+})
 
 // router.post('/forgotPassword', async (req, res) => {
 //     try {

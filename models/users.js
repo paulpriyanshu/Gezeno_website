@@ -65,6 +65,24 @@ const userSchema = new mongoose.Schema({
     },
 });
 
+const contactDetails=new mongoose.Schema({
+    name:{
+        type:String,
+        require:true
+    },
+    email:{
+        type:String,
+        required:true,
+
+    },
+    message:{
+        type:String,
+        required:true,
+    }
+
+})
+
+
 // Hash OTP before saving (if storing)
 userSchema.pre("save", async function (next) {
     if (this.otp.code) {
@@ -108,7 +126,10 @@ const Admin= mongoose.model("Admin", adminSchema);
 
 const User=mongoose.model("User", userSchema);
 
+const ContactDetails=mongoose.model("ContactDetails",contactDetails)
+
 module.exports={
     User,
-    Admin
+    Admin,
+    ContactDetails
 }
