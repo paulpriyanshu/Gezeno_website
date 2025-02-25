@@ -473,17 +473,18 @@ const Offer = mongoose.model('Offer', offerSchema);
 
 
 
-const CartSchema = new mongoose.Schema({
-  cart: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product', // This references the Product schema
-    }
-  ]
-});
+// const CartSchema = new mongoose.Schema({
+//   cart: [
+//     {
+//       type: mongoose.Schema.Types.ObjectId,
+//       ref: 'Product', // This references the Product schema
+//     }
+//   ]
+// });
+
 
 // Export the schema
-const Cart = mongoose.model('Cart', CartSchema);
+// const Cart = mongoose.model('Cart', CartSchema);
 
 const TermAndConditionSchema= new mongoose.Schema({
   terms:{
@@ -540,6 +541,5 @@ module.exports = {
   Size,
   Offer,
   MobileCategoryHeader,
-  Cart,
   TermsAndCondition
 };

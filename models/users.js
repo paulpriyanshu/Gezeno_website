@@ -65,6 +65,104 @@ const userSchema = new mongoose.Schema({
     },
 });
 
+
+const userCart = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    items: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1, 
+          default: 1
+        },
+        price: {
+          type: Number,
+          required: true
+        },
+        total: {
+          type: Number,
+          required: true
+        },
+        size:{
+            type:String,
+            required:false
+        }
+
+      }
+    ],
+    couponApplied: {
+      code: {
+        type: String,
+        default: null
+      },
+      discountAmount: {
+        type: Number,
+        default: 0
+      }
+    },
+    subtotal: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    tax: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    total: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    status: {
+      type: String,
+      enum: ["active", "pending", "ordered", "abandoned"],
+      default: "active"
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["card", "paypal", "cod", "wallet"],
+      default: "cod"
+    },
+    shippingAddress: {
+      fullName: String,
+      address: String,
+      city: String,
+      state: String,
+      postalCode: String,
+      country: String
+    },
+    billingAddress: {
+      fullName: String,
+      address: String,
+      city: String,
+      state: String,
+      postalCode: String,
+      country: String
+    },
+    sessionExpiresAt: {
+      type: Date,
+      default: () => new Date(Date.now() + 1000 * 60 * 60 * 24) // Expires in 24 hrs
+    }
+  },
+  { timestamps: true }
+);
+
+
+const Cart=mongoose.model('Cart',userCart)
+
 const contactDetails=new mongoose.Schema({
     name:{
         type:String,
@@ -131,5 +229,6 @@ const ContactDetails=mongoose.model("ContactDetails",contactDetails)
 module.exports={
     User,
     Admin,
-    ContactDetails
+    ContactDetails,
+    Cart
 }

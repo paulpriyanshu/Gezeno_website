@@ -1,5 +1,5 @@
 const express = require('express')
-const {User, ContactDetails} = require('../models/users')
+const {User, ContactDetails,Cart} = require('../models/users')
 // const address = require('../models/address')
 const nodemailer = require('nodemailer');
 const passport = require('passport')
@@ -12,6 +12,7 @@ const auth = require('../middleware/auth');
 const address = require('../models/address');
 const {Admin} = require('../models/users');
 const { default: axios } = require('axios');
+
 
 
 dotenv.config();
@@ -432,9 +433,8 @@ router.post('/contact-details',async(req,res)=>{
   } catch (error) {
     res.send(404).send("error",error)
   }
-
-
 })
+
 router.get('/get-contacts',async(req,res)=>{
     try {
         const contacts=await ContactDetails.find()
@@ -444,66 +444,6 @@ router.get('/get-contacts',async(req,res)=>{
     }
     
 })
-
-// router.post('/forgotPassword', async (req, res) => {
-//     try {
-//       const user = await User.findOne({ email: req.body.email });
-//       if (!user) {
-//         return res.status(404).json({ status: 'fail', message: 'There is no user with that email address.' });
-//       }
-
-//       const resetToken = crypto.randomBytes(32).toString('hex');
-//       user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-//       user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-//       await User.save({ validateBeforeSave: false });
-
-//       const resetURL = `${req.protocol}://${req.get('host')}/api/resetPassword/${resetToken}`;
-//       const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}\nIf you didn't forget your password, please ignore this email!`;
-
-//       try {
-//         await sendEmail({
-//           email: user.email,
-//           subject: 'Your password reset token (valid for 10 min)',
-//           message,
-//         });
-
-//         res.status(200).json({ status: 'success', message: 'Token sent to email!' });
-//       } catch (err) {
-//         user.resetPasswordToken = undefined;
-//         user.resetPasswordExpire = undefined;
-//         await user.save({ validateBeforeSave: false });
-
-//         return res.status(500).json({ status: 'fail', message: 'There was an error sending the email. Try again later!' });
-//       }
-//     } catch (err) {
-//       res.status(500).json({ status: 'error', message: err.message });
-//     }
-//   });
-
-// router.post('/resetPassword/:token', async (req, res) => {
-//     try {
-//       const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
-
-//       const user = await User.findOne({
-//         resetPasswordToken: hashedToken,
-//         resetPasswordExpires: { $gt: Date.now() },
-//       });
-
-//       if (!user) {
-//         return res.status(400).json({ status: 'fail', message: 'Token is invalid or has expired' });
-//       }
-
-//       user.password = req.body.password;
-//       user.resetPasswordToken = undefined;
-//       user.resetPasswordExpire = undefined;
-//       await user.save();
-//       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-//       res.header('Authorization', token).json({ message: 'Logged in', token });
-
-//     } catch (err) {
-//       res.status(500).json({ status: 'error', message: err.message });
-//     }
-//   });
 
 
 router.post('/update-profile', async (req, res) => {
@@ -810,5 +750,231 @@ router.post('/delete-address', auth, async (req, res) => {
     }
 });
 
+
+
+router.get("/cart/:email", async (req, res) => {
+    try {
+    const user = await User.findOne( {email:req.params.email} );
+    if (!user) {
+       return res.status(404).json({ message: "User not found" });
+    }
+
+      const cart = await Cart.findOne({ user: user._id }).populate("items.product");
+      if (!cart) return res.status(404).json({ message: "Cart not found" });
+  
+      res.status(200).json(cart);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // 🟢 POST: Add an item to the cart
+  router.post("/addToCart", async (req, res) => {
+    try {
+      const { email, productId, quantity, price, size } = req.body;
+  
+      console.log("Request body:", req.body);
+  
+      // Ensure required fields are present
+      if (!email || !productId) {
+        return res.status(400).json({ message: "Email and Product ID are required" });
+      }
+  
+      // Find user by email
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      console.log("Found user:", user);
+  
+      // Find or create the cart
+      let cart = await Cart.findOne({ user: user._id });
+  
+      if (!cart) {
+        cart = new Cart({ user: user._id, items: [], subtotal: 0, tax: 0, total: 0 });
+      }
+  
+      // Ensure quantity and price are numbers
+      const itemQuantity = Number(quantity) || 1;
+      const itemPrice = Number(price) || 0;
+      const itemSize = size || "default"; // Default to "default" if size is missing
+  
+      // Check if the product with the same size is already in the cart
+      const productIndex = cart.items.findIndex(
+        (item) => item.product.toString() === productId && item.size === itemSize
+      );
+  
+      if (productIndex > -1) {
+        // If same product & same size exists, increase quantity
+        cart.items[productIndex].quantity += itemQuantity;
+        cart.items[productIndex].total = cart.items[productIndex].quantity * itemPrice;
+      } else {
+        // If product ID is same but size is different, add as a new entry
+        cart.items.push({
+          product: productId,
+          quantity: itemQuantity,
+          price: itemPrice,
+          total: itemQuantity * itemPrice,
+          size: itemSize,
+        });
+      }
+  
+      // Recalculate totals
+      cart.subtotal = cart.items.reduce((acc, item) => acc + item.total, 0);
+      cart.tax = cart.tax || 0; // Ensure tax has a default value
+      cart.total = cart.subtotal + cart.tax - (cart.couponApplied?.discountAmount || 0);
+  
+      await cart.save();
+  
+      res.status(200).json({ message: "Item added to cart", cart });
+    } catch (error) {
+      console.error("Error in addToCart:", error);
+      res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+  });
+  
+  // 🔴 DELETE: Remove an item from the cart
+  router.post("/:email/:productId", async (req, res) => {
+    try {
+      const { email, productId } = req.params;
+      const { size } = req.body; // Get size from request body
+  
+      // Find user by email
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      // Find user's cart
+      let cart = await Cart.findOne({ user: user._id });
+      if (!cart) {
+        return res.status(404).json({ message: "Cart not found" });
+      }
+  
+      // Ensure cart items exist before filtering
+      if (cart.items && cart.items.length > 0) {
+        cart.items = cart.items.filter(
+          (item) => item.product.toString() !== productId || item.size !== size
+        );
+      }
+  
+      // Recalculate totals
+      cart.subtotal = cart.items.reduce((acc, item) => acc + (item.total || 0), 0);
+      const discount = cart.couponApplied?.discountAmount || 0;
+      cart.total = cart.subtotal + cart.tax - discount;
+  
+      // Save updated cart
+      await cart.save();
+  
+      res.status(200).json({ message: "Item removed from cart", cart });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  router.post("/updateCart", async (req, res) => {
+    // console.log("inside update")
+    try {
+        const { email, productId, quantity, size, applyCoupon } = req.body;
+
+        // Ensure email and productId are provided
+        if (!email || !productId) {
+            return res.status(400).json({ message: "Email and Product ID are required" });
+        }
+
+        // Find the user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Find the cart
+        let cart = await Cart.findOne({ user: user._id });
+        if (!cart) {
+            return res.status(404).json({ message: "Cart not found" });
+        }
+
+        // Find the item in the cart
+        const productIndex = cart.items.findIndex(
+            (item) => item.product.toString() === productId && item.size === (size || "default")
+        );
+
+        if (productIndex === -1) {
+            return res.status(404).json({ message: "Product not found in cart" });
+        }
+
+        // Update quantity
+        if (quantity !== undefined) {
+            const newQuantity = Math.max(Number(quantity), 1); // Prevent negative quantity
+            cart.items[productIndex].quantity = newQuantity;
+            cart.items[productIndex].total = newQuantity * cart.items[productIndex].price;
+        }
+
+        // Apply coupon
+        if (applyCoupon) {
+            const coupon = await Coupon.findOne({ code: applyCoupon });
+            if (!coupon) {
+                return res.status(400).json({ message: "Invalid coupon code" });
+            }
+            cart.couponApplied = {
+                code: coupon.code,
+                discountAmount: coupon.discountAmount,
+            };
+        }
+
+        // Recalculate totals
+        cart.subtotal = cart.items.reduce((acc, item) => acc + item.total, 0);
+        cart.tax = cart.tax || 0;
+        cart.total = cart.subtotal + cart.tax - (cart.couponApplied?.discountAmount || 0);
+
+        await cart.save();
+
+        res.status(200).json({ message: "Cart updated successfully", cart });
+    } catch (error) {
+        console.error("Error in updateCart:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+});
+router.post("/removeCoupon", async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Ensure email is provided
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        // Find the user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Find the cart
+        let cart = await Cart.findOne({ user: user._id });
+        if (!cart) {
+            return res.status(404).json({ message: "Cart not found" });
+        }
+
+        // Check if a coupon is applied
+        if (!cart.couponApplied) {
+            return res.status(400).json({ message: "No coupon applied to the cart" });
+        }
+
+        // Remove coupon
+        cart.couponApplied = null;
+
+        // Recalculate totals
+        cart.total = cart.subtotal + cart.tax; // Reset total after removing discount
+
+        await cart.save();
+
+        res.status(200).json({ message: "Coupon removed successfully", cart });
+    } catch (error) {
+        console.error("Error in removeCoupon:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+});
 
 module.exports = router;  
