@@ -751,16 +751,22 @@ router.post('/delete-address', auth, async (req, res) => {
 });
 
 
-
 router.get("/cart/:email", async (req, res) => {
     try {
-    const user = await User.findOne( {email:req.params.email} );
-    if (!user) {
-       return res.status(404).json({ message: "User not found" });
-    }
-
+      const user = await User.findOne({ email: req.params.email });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
       const cart = await Cart.findOne({ user: user._id }).populate("items.product");
-      if (!cart) return res.status(404).json({ message: "Cart not found" });
+      
+      if (!cart) {
+        return res.status(200).json({ message: "Cart not found" });
+      }
+  
+      if (cart.items.length === 0) {
+        return res.status(200).json({ message: "Cart is empty", cart });
+      }
   
       res.status(200).json(cart);
     } catch (error) {
@@ -892,7 +898,7 @@ router.get("/cart/:email", async (req, res) => {
     }
   });
 
-  router.post("/updateCart", async (req, res) => {
+router.post("/updateCart", async (req, res) => {
     // console.log("inside update")
     try {
         const { email, productId, quantity, size, applyCoupon } = req.body;

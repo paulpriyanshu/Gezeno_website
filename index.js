@@ -34,12 +34,13 @@ console.log("arrived here")
 
 // app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api',homepage);
-app.use('/api/', authRoutes);
+app.use('/api/users', authRoutes);
 app.use('/api/products', product);
-app.use('/api/',offers)
-app.use('/api/order',order)
+app.use('/api',offers)
+app.use('/api/orders',order)
 app.use('/api',image)
-app.use('/api/coupon',coupons)
+app.use('/api',coupons)
+
 
 //console.log(process.env.EMAIL_USERNAME)
 app.get('/getdata',(req,res)=>{

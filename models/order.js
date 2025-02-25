@@ -24,7 +24,7 @@ const orderSchema = mongoose.Schema({
     ],
     couponsApplied: [
         {
-            code: { type: String, required: true }, // Coupon code
+            code: { type: String, required: false }, // Coupon code
             discountAmount: { type: Number, required: true }, // Amount deducted using the coupon
         },
     ],
