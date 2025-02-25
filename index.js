@@ -1,7 +1,6 @@
 const express = require('express')
 const authRoutes = require('./controller/users');
 const product = require('./controller/product')
-const cart = require('./controller/cart')
 const order = require('./controller/order')
 // const search = require('./controller/search')
 const limiter = require('./middleware/ratelimit')
@@ -25,7 +24,6 @@ connectdb()
 app.use(cors());
 
 
-connectdb()
 // require('./libs/passport');
 // app.use(passport.initialize());
 
@@ -35,15 +33,13 @@ console.log("arrived here")
 // app.use(limiter);
 
 // app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/api/',homepage);
+app.use('/api',homepage);
 app.use('/api/', authRoutes);
-app.use('/api/', product);
-app.use('/api/',cart)
+app.use('/api/products', product);
 app.use('/api/',offers)
-app.use('/api',order)
-app.use('/api/',image)
-app.use('/api/',coupons)
-console.log("arrived here2")
+app.use('/api/order',order)
+app.use('/api',image)
+app.use('/api/coupon',coupons)
 
 //console.log(process.env.EMAIL_USERNAME)
 app.get('/getdata',(req,res)=>{

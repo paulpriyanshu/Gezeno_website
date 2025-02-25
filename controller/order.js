@@ -2,13 +2,6 @@ const express = require('express')
 const {User} = require('../models/users')
 const order = require('../models/order')
 const {Product} = require('../models/product')
-const nodemailer = require('nodemailer');   
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
-const dotenv = require('dotenv');
-const auth = require('../middleware/auth')
 const mongoose =require("mongoose");
 const { default: axios } = require('axios');
 
@@ -45,7 +38,8 @@ router.post("/shiprocket/create-order", async (req, res) => {
         res.status(500).json({ error: error.response?.data || "Server error" });
     }
 });
-router.post('/createorder', async (req, res) => {
+router.post('/createOrder', async (req, res) => {
+    console.log(req.body);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -61,7 +55,7 @@ router.post('/createorder', async (req, res) => {
             shippingPrice,
             totalPrice,
             userId,
-            size
+            couponsApplied
         } = req.body;
 
         // Log each field separately to debug undefined values
@@ -73,11 +67,14 @@ router.post('/createorder', async (req, res) => {
         console.log("shippingPrice:", shippingPrice);
         console.log("totalPrice:", totalPrice);
         console.log("userId:", userId);
-        console.log("selected Size",size)
+        console.log("couponsApplied:", couponsApplied);
 
         // Validate required fields
         if (!shippingInfo || !orderItems || !userId || itemsPrice === undefined || taxPrice === undefined || shippingPrice === undefined || totalPrice === undefined) {
-            return res.status(400).json({ message: 'All fields are mandatory', missingFields: { shippingInfo, orderItems, userId, itemsPrice, taxPrice, shippingPrice, totalPrice } });
+            return res.status(400).json({
+                message: 'All fields are mandatory',
+                missingFields: { shippingInfo, orderItems, userId, itemsPrice, taxPrice, shippingPrice, totalPrice }
+            });
         }
 
         console.log("All fields are valid, proceeding to order creation...");
@@ -86,29 +83,38 @@ router.post('/createorder', async (req, res) => {
             return res.status(400).json({ message: 'Prices must be positive numbers' });
         }
 
-        // Check if products exist
+        // Check if products exist and fetch original price
         await Promise.all(orderItems.map(async (item) => {
-            console.log("product id",item.product)
-            const product = await Product.findById(item.product)
+            console.log("Checking product ID:", item.product);
+            const product = await Product.findById(item.product);
             if (!product) {
                 throw new Error(`Product with ID ${item.product} not found`);
             }
             if (product.stock < item.quantity) {
                 throw new Error(`Insufficient stock for product ${product.name}`);
             }
+            // Attach original price from the product
+            item.originalPrice = product.price;
         }));
 
-        // Create order
+        // Create the order with the updated structure
         const newOrder = new order({
             shippingInfo,
             user: userId,
-            orderItems,
+            orderItems: orderItems.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                originalPrice: item.originalPrice,  // Original product price
+                discountedPrice: item.discountedPrice || item.originalPrice, // Default to originalPrice if no discount
+                product: item.product,
+                size: item.size || null
+            })),
+            couponsApplied: couponsApplied || [], // Store applied coupons
             paymentInfo,
             itemsPrice,
             taxPrice,
             shippingPrice,
-            totalPrice,
-            size
+            totalPrice
         });
 
         const savedOrder = await newOrder.save({ session });

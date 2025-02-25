@@ -835,6 +835,25 @@ router.get("/cart/:email", async (req, res) => {
   });
   
   // 🔴 DELETE: Remove an item from the cart
+
+  router.post('/emptyCart/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const user=await User.findOne({email})
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+          }
+        // Delete all cart items for the given email
+        await Cart.deleteMany({ user:user._id });
+
+
+        return res.status(200).json({ message: "Cart is emptied" });
+    } catch (error) {
+        console.error("Error while emptying the cart:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
   router.post("/:email/:productId", async (req, res) => {
     try {
       const { email, productId } = req.params;

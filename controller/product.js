@@ -1848,10 +1848,10 @@ router.get('/products/:id', async (req, res) => {
 });
 
 
-router.post('/update-product/:productId', async (req, res) => {
+router.post('/Update-Product/:productId', async (req, res) => {
+  // console.log("hello")
   const { productId } = req.params;
   const updateData = req.body;
-  const { variants } = updateData;
 
   try {
     // Convert brand name to ObjectId if provided
